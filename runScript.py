@@ -1,5 +1,3 @@
-import string
-import timeit
 from mvnpy import Repo
 from additional_functions import *
 import subprocess
