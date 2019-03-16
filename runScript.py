@@ -2,14 +2,12 @@ import string
 import timeit
 from mvnpy import Repo
 from additional_functions import *
-import csv
 import subprocess
 import sys
 import ClassifiersNeural
 import sfl_diagnoser
 import filediff
 import git
-import xml.etree.cElementTree as et
 import os
 
 # # TODO project properties
