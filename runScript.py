@@ -20,7 +20,7 @@ CLONE_DIR = "\\BugMinerResults-lang"
 PROJECT_NAME = "lang"
 
 # TODO JAVA code path
-JAVA_CODE_DIR = r'C:\Users\eyalhad\Desktop\javaCode'
+JAVA_CODE_DIR = r'C:\Users\eyalhad\Desktop\predict-trace\javaCode'
 MY_CODE_JAVA_JAR = os.path.join(JAVA_CODE_DIR, r'target\uber-Code-1.0-SNAPSHOT.jar')
 
 # TODO project files
