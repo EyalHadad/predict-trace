@@ -1,2 +1,5 @@
 /mvnpy
 /.idea
+/javaCode/target
+/javaCode/.idea/workspace.xml
+/additional_files/java-callgraph

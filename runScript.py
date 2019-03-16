@@ -34,9 +34,9 @@ DEBUGGER_TESTS_DIR = ROOT_DIR + r'\DebuggerTests'
 
 # TODO additional files
 
-CALL_GARPH_JAR = r'C:\Users\eyalhad\Desktop\runningProjects\additional_files\java-callgraph\target\javacg-0.1-SNAPSHOT-static.jar'
-CHECKSTYLE_JAR = r'C:\Users\eyalhad\Desktop\runningProjects\additional_files\checkstyle-6.8-SNAPSHOT-all.jar'
-METHOD_NAME_LINES_XML = r'C:\Users\eyalhad\Desktop\runningProjects\additional_files\methodNameLines.xml'
+CALL_GARPH_JAR = r'C:\Users\eyalhad\Desktop\predict-trace\additional_files\java-callgraph\target\javacg-0.1-SNAPSHOT-static.jar'
+CHECKSTYLE_JAR = r'C:\Users\eyalhad\Desktop\predict-trace\additional_files\checkstyle-6.8-SNAPSHOT-all.jar'
+METHOD_NAME_LINES_XML = r'C:\Users\eyalhad\Desktop\predict-trace\additional_files\methodNameLines.xml'
 
 
 def run_diagnoser(ADDITIONAL_FILES_PATH, bug_id):
