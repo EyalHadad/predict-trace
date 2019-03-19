@@ -5,10 +5,8 @@ from sklearn.metrics import confusion_matrix
 import warnings
 from sklearn.metrics import accuracy_score  # works
 from sklearn.metrics import roc_auc_score
-import sys
 import cPickle
 from sklearn.neural_network import MLPClassifier
-import os
 from additional_functions import *
 
 
@@ -45,14 +43,14 @@ def train_and_evaluate_classifier(x_train, y_train, x_test, y_test, prec, classi
 def split_data_and_get_best_classifier(x, y, classifier_perform_file):
     loop_list = [("0.9999%", 0.9999), ("0.999%", 0.999), ("0.99%", 0.99), ("0.9", 0.9)]
     res = []
-    tmp_clf = 0
-    loop_list_test = [("0.99", 0.99)]
+    clf_list = []
     for percentage, test_size_split in reversed(loop_list):
         x_train, tmp_x_test, y_train, tmp_y_test = train_test_split(x, y, test_size=test_size_split)
         res.append((percentage,len(y_train),y_train.values.sum()))
         tmp_clf = train_and_evaluate_classifier(x_train, y_train, tmp_x_test, tmp_y_test, percentage, classifier_perform_file)
+        clf_list.append(tmp_clf)
 
-    return tmp_clf
+    return clf_list
 
 
 
@@ -65,56 +63,47 @@ def esstimate_features(x, y, classifier_perform_file):
     return tmp_clf
 
 
-def classifyCode(bugID, input_file, classifier_path_to_save, output_file, classifier_perform_file,
+def classifyCode(bugID, training_input_file, prediction_input_file, classifier_path_to_save, output_file, classifier_perform_file,
                  ADDITIONAL_FILES_PATH):
     reload(sys)
-    # sys.setdefaultencoding('utf8')
     print "----------Start Classifier Code--------------"
     warnings.filterwarnings("ignore")
-
-    func_name, test_name, x, y = get_and_split_data_initial_data(input_file)
-
-    # # just for testing
-    # x_train, tmp_x_test, y_train, tmp_y_test = train_test_split(x, y, test_size=0.2)
-    # clf_deep = MLPClassifier(solver='adam', alpha=1e-5, activation='relu', max_iter=3000,
-    #                          hidden_layer_sizes=(30, 30, 30, 30, 30), random_state=13)
-    # clf_deep.fit(x_train, y_train)
-    # # y_prediction, y_prediction_probability = use_classifier(classifier_path_to_save, func_name, test_name, x, y)
-    # evaluate_classifier(clf_deep, tmp_x_test, tmp_y_test, classifier_perform_file, 80%, "Deep classifier")
-
-    # clf_to_save = esstimate_features(x, y, classifier_perform_file)
-    clf_to_save = split_data_and_get_best_classifier(x, y, classifier_perform_file)
-
-    with open(classifier_path_to_save, 'wb') as fid:
-        print "----------Save Classifier--------------"
-        cPickle.dump(clf_to_save, fid)
+    func_name, test_name, x, y = get_and_split_data_initial_data(training_input_file)
+    clf_list_to_save = split_data_and_get_best_classifier(x, y, classifier_perform_file)
+    save_classifiers(classifier_path_to_save, clf_list_to_save)
 
     # open the classifier of previous
-    classifier_to_use = find_prev_classifier_version(ADDITIONAL_FILES_PATH, bugID)
-    y_prediction, y_prediction_probability = use_classifier(classifier_to_use, func_name, test_name, x, y)
-    result = pd.concat([test_name, func_name, y_prediction_probability, y]).sort_index(kind='merge')
+    classifier_list_to_use = find_prev_classifier_version(ADDITIONAL_FILES_PATH, bugID)
+    func_name, test_name, x, y = get_and_split_data_initial_data(prediction_input_file)
+    y_prediction_probability_list = use_classifier(classifier_list_to_use, func_name, test_name, x, y)
+    results_list = []
+    for y_pred in y_prediction_probability_list:
+        results_list.append(pd.concat([test_name, func_name, y_pred, y]).sort_index(kind='merge'))
     print "----------Create File Input_Diagnoser CSV--------------"
-    save_results_and_print_score(output_file, result)
+    save_results_and_print_score(output_file, results_list)
 
 
-def use_classifier(previous_version_classifier, funcName, testName, x, y):
-    with open(previous_version_classifier, 'rb') as fid:
-        gnb_loaded = cPickle.load(fid)
+def save_classifiers(classifier_path_to_save, clf_list_to_save):
+    counter = 0
+    for clf in clf_list_to_save:
+        new_classifier_path_to_save = classifier_path_to_save.split(".")[0] + "_" + str(counter) + ".pkl"
+        counter = counter + 1
+        with open(new_classifier_path_to_save, 'wb') as fid:
+            print "----------Save Classifier--------------"
+            cPickle.dump(clf, fid)
 
-    y_pred = pd.DataFrame(gnb_loaded.predict(x))
-    y_pred_proba = pd.DataFrame(np.delete(gnb_loaded.predict_proba(x), 0, 1))
 
-    y_pred_proba_csv = y_pred_proba
+def use_classifier(previous_version_classifiers, funcName, testName, x, y):
+    y_pred_proba_list = []
+    for clf in previous_version_classifiers:
+        with open(clf, 'rb') as fid:
+            gnb_loaded = cPickle.load(fid)
 
-    testName.reset_index(drop=True, inplace=True)
-    funcName.reset_index(drop=True, inplace=True)
-    y_pred_proba_csv.reset_index(drop=True, inplace=True)
-    y.reset_index(drop=True, inplace=True)
-    testName.columns = ['value']
-    funcName.columns = ['value']
-    y_pred_proba_csv.columns = ['value']
-    y.columns = ['value']
-    return y_pred, y_pred_proba
+        # y_pred = pd.DataFrame(gnb_loaded.predict(x))
+        y_pred_proba = pd.DataFrame(np.delete(gnb_loaded.predict_proba(x), 0, 1))
+        y_pred_proba_list.append(y_pred_proba)
+
+    return y_pred_proba_list
 
 
 def get_and_split_data_initial_data(input_file):
@@ -130,23 +119,27 @@ def get_and_split_data_initial_data(input_file):
     return funcName, testName, x, y
 
 
-def save_results_and_print_score(output_file, result):
-    if os.path.isfile(output_file):
-        os.remove(output_file)
-    result.to_csv(output_file, sep=' ', encoding='utf-8', index=False)
+def save_results_and_print_score(output_file, results_list):
+    counter = 0
+    for res in results_list:
+        new_output_file = output_file.split(".")[0] + "_" + str(counter) + ".csv"
+        if os.path.isfile(new_output_file):
+            os.remove(new_output_file)
+        res.to_csv(new_output_file, sep=' ', encoding='utf-8', index=False)
 
     i = 6
 
 
 if __name__ == '__main__':
-    # C:\Users\eyalhad\Desktop\runningProjects\Lang_version\lang_33_fix\additionalFiles
     bug_id = '33'
-    input_file = r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version\lang_33_fix\additionalFiles\inputToNNB.csv'
+    training_input_file = r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version\lang_33_fix\additionalFiles\trainingInputToNN.csv'
+    prediction_input_file = r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version\lang_33_fix\additionalFiles\predictionInputToNN.csv'
     classifier_file = r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version\lang_33_fix\additionalFiles\classifier.pkl'
     output_file = r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version\lang_33_fix\additionalFiles\score_33.csv'
     preform_f = r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version\lang_33_fix\additionalFiles\classifier_score_33.txt'
     add_file = r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version\lang_33_fix\additionalFiles'
-    classifyCode(bug_id, input_file, classifier_file, output_file, preform_f, add_file)
+
+    classifyCode(bug_id, training_input_file, prediction_input_file, classifier_file, output_file, preform_f, add_file)
     arr = sys.argv
 
     if len(arr) == 2:

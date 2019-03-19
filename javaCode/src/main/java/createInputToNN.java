@@ -67,39 +67,6 @@ public class createInputToNN {
         System.out.println("--------WRITING THE INPUT FILE----------");
         insertIndexToCSV(lineLength ,trainingWriter);
         insertIndexToCSV(lineLength ,predictWriter);
-//        boolean findBugFunction = false;
-//        int wroteLine = 0;
-//        for(int t=0;t<bugFuncNames.length;t++)
-//        {
-//            int index;
-//            index = targetFunctionList.indexOf(bugFuncNames[t]);
-//            if(index>=0)
-//            {
-//                findBugFunction = true;
-//                String targetFunction = targetFunctionList.get(index);
-//                if(createCSV(testsList,traceFolder,targetFunction,directedGraph,writer,lineLength,pathCount,vertexDic,traceDic) == 1)
-//                {
-//                    wroteLine++;
-//                }
-//                else
-//                {
-//                    writeToLog(LOG_FILE,"couldn't find a path from failed test to " + targetFunction , bugNum);
-//                }
-//            }
-//        }
-//        if(testsList.size() < 2)
-//        {
-//            writeToLog(LOG_FILE,"There is no traces in the folder", bugNum);
-//            wroteLine = 0;
-//        }
-//        if(wroteLine == 0 || findBugFunction == false)
-//        {
-//            returnError(FULL_ADDITIONAL_FILES_PATH + "\\errorFile.txt", 1);
-//        }
-//        else {
-//
-//        }
-        int smallSize = targetFunctionList.size() / 10;
         boolean belongToTrain;
         for (int i = 0; i < targetFunctionList.size(); i++) {
             if (i % 1000 == 0) {
@@ -224,8 +191,6 @@ public class createInputToNN {
             }
         for(int iter =0; iter < calculateNumOfPaths_count; iter ++)
         {
-            long start = new GregorianCalendar().getTimeInMillis();
-//            System.out.println("--------The start func----------" );
             System.out.println("calculate paths with length:" + (iter+1));
 
             for (int i=0; i<adjMatrix.length; ++i)
@@ -243,7 +208,6 @@ public class createInputToNN {
                     a[i][j] = c[i][j];
                     c[i][j] = 0;
                 }
-//            System.out.println("--------The end func----------"+ (new GregorianCalendar().getTimeInMillis()-start));
         }
         return count;
     }

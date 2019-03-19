@@ -5,33 +5,39 @@ import java.nio.file.Paths;
 import java.util.*;
 
 public class createMatrixTxt {
-    public static String bugNumberString = "1", additional_files_path = "", outputFileNameEyal = "", outputFileNameAmir = "", inputFile = "", regularMatrixTextFolder = "C:\\Users\\eyalhad\\Desktop\\Math_data\\AmirTxtData";
+    public static String bugNumberString = "1", additional_files_path = "", inputFile = "", regularMatrixTextFolder = "C:\\Users\\eyalhad\\Desktop\\Math_data\\AmirTxtData";
     public static String[] bugFuncNames;
+    public static String[] outputFilesNames = new String[4];
     public static ArrayList<Integer> bugNumbers =new ArrayList<Integer>();
     public static int category, epsilon = 30, delta = 30;
-    public static Map<String, List<String>> traceDic = new HashMap<String, List<String>>();
     public static Map<String, Integer> testFuncDic = new  HashMap<String,Integer>(), funcNumberDic = new HashMap<String, Integer>();
+    public static Map<String, List<String>> traceDic = new HashMap<String, List<String>>();
+    public static List<Map<String, List<String>>> traceDicList = new ArrayList<Map<String, List<String>>>(5);
+
 
     public static void main(String[] args) throws IOException {
-        System.out.println("\n--------Start Create Matrix Txt----------");
+                System.out.println("\n--------Start Create Matrix Txt----------");
         if(args.length>2)
         {
             init_addresses(args);
         }
-
-        category = 1;
-        getTestsAndBugNum(inputFile);
         System.out.println("--------CREATE AMIR FILE----------");
-        StringBuilder failTestClass = writeTextFile(traceDic,outputFileNameAmir,funcNumberDic);
-        if(failTestClass.length()== 0)
-            sendFeedback(additional_files_path+ "\\errorFile.txt", 1);
-        else {
-        category = 3;
-        System.out.println("--------CREATE EYAL FILE----------");
-        writeTextFile(traceDic,outputFileNameEyal,funcNumberDic);
-        category = 2;
-        enterFailTestToFiles(failTestClass, outputFileNameAmir);
-        enterFailTestToFiles(failTestClass, outputFileNameEyal);
+        category = 1;
+        for( int i=0;i<outputFilesNames.length;i++)
+        {
+            if(i!=1)
+                traceDic.clear();
+                getTestsAndBugNum(inputFile,i*2);
+            StringBuilder failTestClass = writeTextFile(traceDic,outputFilesNames[i],funcNumberDic);
+            if(failTestClass.length()== 0)
+            {
+                sendFeedback(additional_files_path+ "\\errorFile.txt", 1);
+                break;
+            }
+            enterFailTestToFiles(failTestClass, outputFilesNames[i]);
+            category = 3;
+
+        }
         sendFeedback(additional_files_path + "\\errorFile.txt", 0);
 //        File destFile=new File(regularMatrixTextFolder + "\\" + getProjectVersion(additional_files_path) + "_" + bugNumberString + ".txt");
 //        if(!destFile.exists())
@@ -40,18 +46,6 @@ public class createMatrixTxt {
 //            copyFileUsingJava7Files(sourceFile,destFile);
 //        }
 
-        }
-
-
-    }
-
-    private static String getProjectVersion(String additional_files_path) {
-        return additional_files_path.split("Desktop")[1].split("_")[0].substring(1);
-
-    }
-
-    private static void copyFileUsingJava7Files(File source, File dest) throws IOException {
-        Files.copy(source.toPath(), dest.toPath());
     }
 
     private static void sendFeedback(String errorFilePath, int i) throws FileNotFoundException, UnsupportedEncodingException {
@@ -61,16 +55,16 @@ public class createMatrixTxt {
     }
 
 
-    private static void getTestsAndBugNum(String path) throws IOException {
+    private static void getTestsAndBugNum(String path,int fileIndex) throws IOException {
 
-        int funcIndex=0;
+        int funcIndex, indexToInsert;
         String line;
-        int indexToInsert=0;
+        String[] inputFiles = path.split(" ");
         String[] lineData = new String[4];
-
-        try (BufferedReader br = new BufferedReader(new FileReader(path))) {
+        try (BufferedReader br = new BufferedReader(new FileReader(inputFiles[fileIndex]))) {
             br.readLine(); //remove first line
-            //read the csv input file
+            funcIndex=0;
+            indexToInsert = 0;
             while ((line = br.readLine()) != null) {
 
                 lineData[indexToInsert] = line;
@@ -80,29 +74,31 @@ public class createMatrixTxt {
                     indexToInsert = 0;
                     String testFuncNamesConcate = lineData[0] + lineData[1];
                     //create funcNumberDic to get number for every function
-                    if(!funcNumberDic.containsKey(lineData[1]))
+                    if(fileIndex==0)
                     {
-                        funcNumberDic.put(lineData[1],funcIndex);
-                        funcIndex++;
-                    }
-
-                    //dic for check that we didn't double insert the same combination
-                    if(!testFuncDic.containsKey(testFuncNamesConcate))
-                    {
-                        testFuncDic.put(testFuncNamesConcate,1);
-                        //if the function actually in the trace or if we think it is we should add it to the traceDic
-                        if(!lineData[2].equals("0.0") || lineData[3].equals("1"))
+                        if(!funcNumberDic.containsKey(lineData[1]))
                         {
-                            if (!traceDic.containsKey(lineData[0])) {
-                                traceDic.put(lineData[0], new ArrayList<String>());
-                            }
-                            traceDic.get(lineData[0]).add(lineData[1] + "=" + lineData[2] + "=" + lineData[3]);
+                            funcNumberDic.put(lineData[1],funcIndex);
+                            funcIndex++;
                         }
+                        if(!testFuncDic.containsKey(testFuncNamesConcate))
+                        {
+                            testFuncDic.put(testFuncNamesConcate,1);
+                        }
+                    }
+                    //dic for check that we didn't double insert the same combination
+                    if(!lineData[2].equals("0.0") || lineData[3].equals("1"))
+                    {
+                        if (!traceDic.containsKey(lineData[0])) {
+                            traceDic.put(lineData[0], new ArrayList<String>());
+                        }
+                        traceDic.get(lineData[0]).add(lineData[1] + "=" + lineData[2] + "=" + lineData[3]);
                     }
                 }
             }
         }
-        updateBugsNumbers(funcNumberDic);
+        if(fileIndex==0)
+            updateBugsNumbers(funcNumberDic);
     }
 
     private static void updateBugsNumbers(Map<String,Integer> funcDic) {
@@ -151,7 +147,7 @@ public class createMatrixTxt {
                 int compNum= funcDic.get(values[0]);
                 havePrediction = haveProbabilityToBeInTrace(havePrediction, predictionTrace, values[1], compNum);
                 // if it actually in the trace
-                if(Integer.valueOf(values[2])==1)
+                if(Float.valueOf(values[2])==1)
                 {
                     Random generator = new Random();
                     int number = generator.nextInt(epsilon);
@@ -381,9 +377,16 @@ public class createMatrixTxt {
         String input_bug_fanctions = args[1];
         bugFuncNames = input_bug_fanctions.split(" ");
         additional_files_path = args[2];
-        outputFileNameEyal = additional_files_path + "\\inputMatrix_eyal.txt";
-        outputFileNameAmir = additional_files_path + "\\inputMatrix_amir.txt";
-        inputFile = additional_files_path + "\\input_diagnoser.csv";
+        outputFilesNames[0] = additional_files_path + "\\inputMatrix_amir.txt";
+        outputFilesNames[1] = additional_files_path + "\\inputMatrix_eyal_1.txt";
+        outputFilesNames[2] = additional_files_path + "\\inputMatrix_eyal_2.txt";
+        outputFilesNames[3] = additional_files_path + "\\inputMatrix_eyal_3.txt";
+        StringBuilder inputNew = new StringBuilder();
+        for(int i=0;i<6;i = i + 2)
+        {
+            inputNew.append(additional_files_path).append("\\score_").append(bugNumberString).append("_").append(String.valueOf(i)).append(".csv ");
+        }
+        inputFile = inputNew.toString();
     }
 
 }
