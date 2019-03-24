@@ -241,8 +241,10 @@ public class createInputToNN {
     }
 
     private static void insertIndexToCSV(int lineLength, FileWriter writer) throws IOException {
-        for (int j = 0; j < lineLength; j++) {
-            writer.append(String.valueOf(j));
+        String[] columnsArray = {"FuncName", "TestName", "y", "PathLength", "FuncInDegree", "TestOutDegree",
+        "PathExistence", "ClassCommonWords", "FuncCommonWords", "ClassSim", "FuncSim"};
+        for (int j = 0; j < columnsArray.length; j++) {
+            writer.append(columnsArray[j]);
             writer.append(",");
         }
         writer.append("\n");

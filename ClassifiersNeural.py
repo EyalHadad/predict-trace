@@ -44,9 +44,11 @@ def split_data_and_get_best_classifier(x, y, classifier_perform_file):
     loop_list = [("0.9999%", 0.9999), ("0.999%", 0.999), ("0.99%", 0.99), ("0.9", 0.9)]
     res = []
     clf_list = []
+    if os.path.isfile(classifier_perform_file):
+        os.remove(classifier_perform_file)
     for percentage, test_size_split in reversed(loop_list):
         x_train, tmp_x_test, y_train, tmp_y_test = train_test_split(x, y, test_size=test_size_split)
-        res.append((percentage,len(y_train),y_train.values.sum()))
+        res.append((percentage, len(y_train), y_train.values.sum()))
         tmp_clf = train_and_evaluate_classifier(x_train, y_train, tmp_x_test, tmp_y_test, percentage, classifier_perform_file)
         clf_list.append(tmp_clf)
 
@@ -75,10 +77,17 @@ def classifyCode(bugID, training_input_file, prediction_input_file, classifier_p
     # open the classifier of previous
     classifier_list_to_use = find_prev_classifier_version(ADDITIONAL_FILES_PATH, bugID)
     func_name, test_name, x, y = get_and_split_data_initial_data(prediction_input_file)
-    y_prediction_probability_list = use_classifier(classifier_list_to_use, func_name, test_name, x, y)
+    y_prediction_probability_list = use_classifier(classifier_list_to_use, x)
+    test_name = test_name.rename(index=str, columns={"1": "test_name"})
+    func_name = func_name.rename(index=str, columns={"0": "func_name"})
+    y = y.rename(index=str, columns={"2": "y"})
     results_list = []
     for y_pred in y_prediction_probability_list:
-        results_list.append(pd.concat([test_name, func_name, y_pred, y]).sort_index(kind='merge'))
+        y_pred.index = test_name.index
+        tmp_result = pd.concat([test_name, func_name, y_pred, y], axis=1)
+        index_to_remove = [x for x in tmp_result.index[tmp_result['y_pred'] < 0.001] if x in tmp_result.index[tmp_result['y'] == 0]]
+        res2 = tmp_result.drop(index_to_remove)
+        results_list.append(tmp_result.drop(index_to_remove))
     print "----------Create File Input_Diagnoser CSV--------------"
     save_results_and_print_score(output_file, results_list)
 
@@ -93,14 +102,14 @@ def save_classifiers(classifier_path_to_save, clf_list_to_save):
             cPickle.dump(clf, fid)
 
 
-def use_classifier(previous_version_classifiers, funcName, testName, x, y):
+def use_classifier(previous_version_classifiers, x):
     y_pred_proba_list = []
     for clf in previous_version_classifiers:
         with open(clf, 'rb') as fid:
             gnb_loaded = cPickle.load(fid)
 
         # y_pred = pd.DataFrame(gnb_loaded.predict(x))
-        y_pred_proba = pd.DataFrame(np.delete(gnb_loaded.predict_proba(x), 0, 1))
+        y_pred_proba = pd.DataFrame(np.delete(gnb_loaded.predict_proba(x), 0, 1), columns=["y_pred"])
         y_pred_proba_list.append(y_pred_proba)
 
     return y_pred_proba_list
