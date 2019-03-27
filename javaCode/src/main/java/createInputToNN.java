@@ -245,7 +245,8 @@ public class createInputToNN {
         "PathExistence", "ClassCommonWords", "FuncCommonWords", "ClassSim", "FuncSim"};
         for (int j = 0; j < columnsArray.length; j++) {
             writer.append(columnsArray[j]);
-            writer.append(",");
+            if(j<columnsArray.length-1)
+                writer.append(",");
         }
         writer.append("\n");
     }
@@ -482,7 +483,8 @@ public class createInputToNN {
         StringBuilder sb = new StringBuilder();
         for (int j = 0; j < lineArray.length; j++) {
             sb.append(lineArray[j]);
-            sb.append(",");
+            if(j<lineArray.length-1)
+                sb.append(",");
         }
         sb.append("\n");
         writer.append(sb.toString());

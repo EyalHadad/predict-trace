@@ -1,15 +1,4 @@
-import string
-import timeit
-from mvnpy import Repo
-from mvnpy.mvn import MVNTimeoutError
 import csv
-import subprocess
-import sys
-import ClassifiersNeural
-import sfl_diagnoser
-import filediff
-import git
-import xml.etree.cElementTree as et
 import os
 
 
@@ -152,12 +141,12 @@ def find_prev_classifier_version(ADDITIONAL_FILES_PATH, bug_id):
     tmp_add_file = ADDITIONAL_FILES_PATH
     for num in range((int(bug_id) - 1), 0, -1):
         tmp_add_file = tmp_add_file.replace(bug_id, str(num))
-        if os.path.isfile(os.path.join(tmp_add_file, r"classifier_0.pkl")):
+        if os.path.isfile(os.path.join(tmp_add_file, r"classifier_0.9.pkl")):
             return [os.path.join(ADDITIONAL_FILES_PATH, f) for f in os.listdir(tmp_add_file) if f.endswith('.pkl')]
         else:
             tmp_add_file = tmp_add_file.replace(str(num), bug_id)
 
-        return [os.path.join(ADDITIONAL_FILES_PATH, f) for f in os.listdir(tmp_add_file) if f.endswith('.pkl')]
+    return [os.path.join(ADDITIONAL_FILES_PATH, f) for f in os.listdir(tmp_add_file) if f.endswith('.pkl')]
 
 
 if __name__ == '__main__':

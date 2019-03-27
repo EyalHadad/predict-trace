@@ -1,3 +1,6 @@
+import sys
+import time
+import os
 import numpy as np  # linear algebra
 import pandas as pd  # data processing, CSV file I/O (e.g. pd.read_csv)
 from sklearn.model_selection import train_test_split
@@ -7,7 +10,7 @@ from sklearn.metrics import accuracy_score  # works
 from sklearn.metrics import roc_auc_score
 import cPickle
 from sklearn.neural_network import MLPClassifier
-from additional_functions import *
+from additional_functions import find_prev_classifier_version
 
 
 def evaluate_classifier(classifier, x_test, y_test, classifier_perform_file, percentage, classifier_type_name, num_of_positive_in_train):
@@ -41,7 +44,7 @@ def train_and_evaluate_classifier(x_train, y_train, x_test, y_test, prec, classi
 
 
 def split_data_and_get_best_classifier(x, y, classifier_perform_file):
-    loop_list = [("0.9999%", 0.9999), ("0.999%", 0.999), ("0.99%", 0.99), ("0.9", 0.9)]
+    loop_list = [("0.9999", 0.9999), ("0.999", 0.999), ("0.99", 0.99), ("0.9", 0.9)]
     res = []
     clf_list = []
     if os.path.isfile(classifier_perform_file):
@@ -50,8 +53,7 @@ def split_data_and_get_best_classifier(x, y, classifier_perform_file):
         x_train, tmp_x_test, y_train, tmp_y_test = train_test_split(x, y, test_size=test_size_split)
         res.append((percentage, len(y_train), y_train.values.sum()))
         tmp_clf = train_and_evaluate_classifier(x_train, y_train, tmp_x_test, tmp_y_test, percentage, classifier_perform_file)
-        clf_list.append(tmp_clf)
-
+        clf_list.append((tmp_clf, test_size_split))
     return clf_list
 
 
@@ -67,35 +69,40 @@ def esstimate_features(x, y, classifier_perform_file):
 
 def classifyCode(bugID, training_input_file, prediction_input_file, classifier_path_to_save, output_file, classifier_perform_file,
                  ADDITIONAL_FILES_PATH):
-    reload(sys)
     print "----------Start Classifier Code--------------"
+    print "----------Training--------------"
     warnings.filterwarnings("ignore")
+    start = time.time()
     func_name, test_name, x, y = get_and_split_data_initial_data(training_input_file)
     clf_list_to_save = split_data_and_get_best_classifier(x, y, classifier_perform_file)
     save_classifiers(classifier_path_to_save, clf_list_to_save)
+    elapsed = time.time() - start
+    print("Total training time: " + str(elapsed))
 
     # open the classifier of previous
+    start = time.time()
     classifier_list_to_use = find_prev_classifier_version(ADDITIONAL_FILES_PATH, bugID)
     func_name, test_name, x, y = get_and_split_data_initial_data(prediction_input_file)
     y_prediction_probability_list = use_classifier(classifier_list_to_use, x)
-    test_name = test_name.rename(index=str, columns={"1": "test_name"})
-    func_name = func_name.rename(index=str, columns={"0": "func_name"})
-    y = y.rename(index=str, columns={"2": "y"})
     results_list = []
-    for y_pred in y_prediction_probability_list:
+    for y_pred, name in y_prediction_probability_list:
         y_pred.index = test_name.index
         tmp_result = pd.concat([test_name, func_name, y_pred, y], axis=1)
-        index_to_remove = [x for x in tmp_result.index[tmp_result['y_pred'] < 0.001] if x in tmp_result.index[tmp_result['y'] == 0]]
-        res2 = tmp_result.drop(index_to_remove)
-        results_list.append(tmp_result.drop(index_to_remove))
+        index_to_remove_1 = [x for x in tmp_result.index[tmp_result['y_pred'] < 0.001]]
+        index_to_remove_2 = [x for x in tmp_result.index[tmp_result['y'] == 0]]
+        index_to_remove = list(set(index_to_remove_1).intersection(index_to_remove_2))
+        # res2 = tmp_result.drop(index_to_remove)
+        results_list.append((tmp_result.drop(index_to_remove), name))
     print "----------Create File Input_Diagnoser CSV--------------"
     save_results_and_print_score(output_file, results_list)
+    elapsed = time.time() - start
+    print("Total predicting time: " + str(elapsed))
 
 
 def save_classifiers(classifier_path_to_save, clf_list_to_save):
     counter = 0
-    for clf in clf_list_to_save:
-        new_classifier_path_to_save = classifier_path_to_save.split(".")[0] + "_" + str(counter) + ".pkl"
+    for clf, test_size in clf_list_to_save:
+        new_classifier_path_to_save = classifier_path_to_save.split(".")[0] + "_" + str(test_size) + ".pkl"
         counter = counter + 1
         with open(new_classifier_path_to_save, 'wb') as fid:
             print "----------Save Classifier--------------"
@@ -110,33 +117,28 @@ def use_classifier(previous_version_classifiers, x):
 
         # y_pred = pd.DataFrame(gnb_loaded.predict(x))
         y_pred_proba = pd.DataFrame(np.delete(gnb_loaded.predict_proba(x), 0, 1), columns=["y_pred"])
-        y_pred_proba_list.append(y_pred_proba)
+        y_pred_proba_list.append((y_pred_proba, fid))
 
     return y_pred_proba_list
 
 
 def get_and_split_data_initial_data(input_file):
     dataset = pd.read_csv(input_file)
+    dataset = dataset.dropna()
     # ********************create classifier******************
-    data_length = len(dataset.columns)
-    x_col = str(data_length - 2)
-    # y_col = str(data_length-2)
-    x = dataset.loc[:, '3':x_col]
-    y = dataset.loc[:, '2':'2']
-    testName = dataset.loc[:, '1':'1']
-    funcName = dataset.loc[:, '0':'0']
+    x = dataset.loc[:, 'PathLength':'FuncSim']
+    y = dataset.loc[:,'y']
+    testName = dataset.loc[:, 'TestName']
+    funcName = dataset.loc[:, 'FuncName']
     return funcName, testName, x, y
 
 
-def save_results_and_print_score(output_file, results_list):
-    counter = 0
-    for res in results_list:
-        new_output_file = output_file.split(".")[0] + "_" + str(counter) + ".csv"
+def save_results_and_print_score(output_result_file, results_list):
+    for counter, res in enumerate(results_list):
+        new_output_file = output_result_file.split(".")[0] + "_" + res[1].name.split(".")[1] + ".csv"
         if os.path.isfile(new_output_file):
             os.remove(new_output_file)
-        res.to_csv(new_output_file, sep=' ', encoding='utf-8', index=False)
-
-    i = 6
+        res[0].to_csv(new_output_file, sep=' ', encoding='utf-8', index=False)
 
 
 if __name__ == '__main__':

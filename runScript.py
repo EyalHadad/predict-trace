@@ -7,7 +7,8 @@ import sfl_diagnoser
 import filediff
 import git
 import os
-
+import time
+import timeit
 # # TODO project properties
 
 # ROOT_DIR = 'C:\Users\eyalhad\Desktop\runningProjects\Math_version'
@@ -62,7 +63,7 @@ def run_classifier(ADDITIONAL_FILES_PATH, bug_id):
     prediction_input_to_NN = os.path.join(ADDITIONAL_FILES_PATH, r"predictionInputToNN.csv")
     training_input_to_NN = os.path.join(ADDITIONAL_FILES_PATH, r"trainingInputToNN.csv")
     classifier_file = os.path.join(ADDITIONAL_FILES_PATH, r"classifier.pkl")
-    output_file = os.path.join(ADDITIONAL_FILES_PATH, r"input_diagnoser.csv")
+    output_file = os.path.join(ADDITIONAL_FILES_PATH, "score_" + bug_id + ".csv")
     classifier_perform_file = os.path.join(ADDITIONAL_FILES_PATH, "classifier_score_" + bug_id + ".txt")
     print("-----Bug Num: " + str(bug_id) + "-----")
     start_t = timeit.default_timer()
@@ -205,6 +206,15 @@ def get_func_names(git_repo_local_path, bug_commit_number, fix_commit_number):
     return fix_constuctor_names(func_names)
 
 
+def clear_log_files():
+    if os.path.isfile(TIME_FILE):
+        os.remove(TIME_FILE)
+    if os.path.isfile(LOG_FILE):
+        os.remove(LOG_FILE)
+    if os.path.isfile(ERRORS_FILE):
+        os.remove(ERRORS_FILE)
+
+
 def writeToLog(bug_id, func_name_list):
     if os.path.exists(LOG_FILE):
         log_file = open(LOG_FILE, 'a+')
@@ -257,7 +267,7 @@ def myFunc(bug_id, fix_version, bug_version, git_repo_path):
     # todo tracer_parsing
     # tracer_and_parse(DEBUGGER_TESTS_PATH, PROJECT_VERSION, bug_id, bug_version, fix_version,git_repo_local_path, trace_file)
     # todo input_to_NN
-    # create_input_NN(ADDITIONAL_FILES_PATH, bug_id, error_file, func_name_list)
+    create_input_NN(ADDITIONAL_FILES_PATH, bug_id, error_file, func_name_list)
 
     # todo check if error during create_input_NN
     file = open(error_file, 'r')
@@ -296,7 +306,7 @@ def read_commit_file(commit_db, GIT_REPO_PATH, start_bug_num):
 
     if "BugMinerResults" in commit_db:
         content.pop(0)
-
+    clear_log_files()
     # you may also want to remove whitespace characters like `\n` at the end of each line
     line_number = 1
     content = [x.strip() for x in content]
