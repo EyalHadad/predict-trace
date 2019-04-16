@@ -11,14 +11,14 @@ import time
 import timeit
 # # TODO project properties
 
-# ROOT_DIR = 'C:\Users\eyalhad\Desktop\runningProjects\Math_version'
-# PROJECT_DEFECTS_NAME = "\\defects4j-math"
-# PROJECT_NAME = "math"
+ROOT_DIR = r'C:\Users\eyalhad\Desktop\runningProjects\Math_version'
+CLONE_DIR = "\\defects4j-math"
+PROJECT_NAME = "math"
 
 # TODO project properties
-ROOT_DIR = r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version'
-CLONE_DIR = "\\BugMinerResults-lang"
-PROJECT_NAME = "lang"
+# ROOT_DIR = r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version'
+# CLONE_DIR = "\\BugMinerResults-lang"
+# PROJECT_NAME = "lang"
 
 # TODO JAVA code path
 JAVA_CODE_DIR = r'C:\Users\eyalhad\Desktop\predict-trace\javaCode'
@@ -258,7 +258,7 @@ def myFunc(bug_id, fix_version, bug_version, git_repo_path):
     # todo MVN and folders
     # mvn_dir_commands(PROJECT_VERSION, fix_version, git_repo_path)
     # todo call graph
-    # CALL_GARPH_PATH = call_graph_creation(PROJECT_VERSION)
+    CALL_GARPH_PATH = call_graph_creation(PROJECT_VERSION)
 
     # todo get function names
     func_name_list = get_func_names(git_repo_local_path, bug_version, fix_version)
@@ -282,7 +282,7 @@ def myFunc(bug_id, fix_version, bug_version, git_repo_path):
 
     # todo run createMatrixTxt code
 
-    createMatrixTxt_code(ADDITIONAL_FILES_PATH, bug_id, func_name_list)
+    # createMatrixTxt_code(ADDITIONAL_FILES_PATH, bug_id, func_name_list)
 
     # todo check if error during createMatrixTxt
     file = open(error_file, 'r')
@@ -292,10 +292,10 @@ def myFunc(bug_id, fix_version, bug_version, git_repo_path):
         writeToLog(bug_id, func_name_list)
         return 7
     # todo run_ diagnoser
-    run_diagnoser(ADDITIONAL_FILES_PATH, bug_id)
+    # run_diagnoser(ADDITIONAL_FILES_PATH, bug_id)
 
     total_elapsed = timeit.default_timer() - total_start_time
-    writeToLogTime("Total Bug" + str(bug_id) + " time: " + str(total_elapsed / 60) + "\r\n")
+    # writeToLogTime("Total Bug" + str(bug_id) + " time: " + str(total_elapsed / 60) + "\r\n")
 
 
 def read_commit_file(commit_db, GIT_REPO_PATH, start_bug_num):
@@ -323,7 +323,7 @@ def read_commit_file(commit_db, GIT_REPO_PATH, start_bug_num):
             fix_version = split_content[2]
         if int(bug_num) not in black_list:
             if int(bug_num) >= int(start_bug_num):
-                if int(bug_num) > 0:
+                if int(bug_num) > 0 :
                     try:
                         myFunc(bug_num, fix_version, bug_version, GIT_REPO_PATH)
                     except Exception as e:

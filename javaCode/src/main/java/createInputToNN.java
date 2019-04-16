@@ -75,7 +75,7 @@ public class createInputToNN {
             }
             String targetFunction = targetFunctionList.get(i);
             belongToTrain = false;
-            if (i % 10 == 0) {
+            if (i % 20 == 0) {
                 belongToTrain = true;
             }
 

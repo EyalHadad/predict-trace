@@ -25,7 +25,7 @@ public class createMatrixTxt {
         System.out.println("--------CREATE AMIR FILE----------");
         category = 1;
 
-        for( int i=0;i<outputFilesNames.length;i++)
+        for( int i=2;i<outputFilesNames.length;i++)
         {
             traceDic.clear();
             getTestsAndBugNum(inputFile[i],i);
@@ -61,7 +61,7 @@ public class createMatrixTxt {
                 lineData = line.split(" ");
                 String testFuncNamesConcate = lineData[0] + lineData[1];
                 //create funcNumberDic to get number for every function
-                if(fileIndex==0)
+                if(fileIndex==2)
                 {
                     if(!funcNumberDic.containsKey(lineData[1]))
                     {

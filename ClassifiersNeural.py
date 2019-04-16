@@ -1,3 +1,5 @@
+import collections
+import csv
 import sys
 import time
 import os
@@ -40,22 +42,22 @@ def train_and_evaluate_classifier(x_train, y_train, x_test, y_test, prec, classi
     clf_deep.fit(x_train, y_train)
     evaluate_classifier(clf_slim, x_test, y_test, classifier_perform_file, prec, "Slim classifier", str(y_train.values.sum()))
     evaluate_classifier(clf_deep, x_test, y_test, classifier_perform_file, prec, "Deep classifier", str(y_train.values.sum()))
-    return clf_deep
+    return clf_slim
 
 
 def split_data_and_get_best_classifier(x, y, classifier_perform_file):
-    loop_list = [("0.9999", 0.9999), ("0.999", 0.999), ("0.99", 0.99), ("0.9", 0.9)]
+    loop_list = [("0.4", 0.4), ("0.6", 0.6), ("0.8", 0.8), ("0.9", 0.9)]
+    tmp_loop_list = [("0.5", 0.5)]
     res = []
     clf_list = []
     if os.path.isfile(classifier_perform_file):
         os.remove(classifier_perform_file)
-    for percentage, test_size_split in reversed(loop_list):
+    for percentage, test_size_split in reversed(tmp_loop_list):
         x_train, tmp_x_test, y_train, tmp_y_test = train_test_split(x, y, test_size=test_size_split)
         res.append((percentage, len(y_train), y_train.values.sum()))
         tmp_clf = train_and_evaluate_classifier(x_train, y_train, tmp_x_test, tmp_y_test, percentage, classifier_perform_file)
         clf_list.append((tmp_clf, test_size_split))
     return clf_list
-
 
 
 def esstimate_features(x, y, classifier_perform_file):
@@ -72,34 +74,40 @@ def classifyCode(bugID, training_input_file, prediction_input_file, classifier_p
     print "----------Start Classifier Code--------------"
     print "----------Training--------------"
     warnings.filterwarnings("ignore")
-    start = time.time()
-    func_name, test_name, x, y = get_and_split_data_initial_data(training_input_file)
-    clf_list_to_save = split_data_and_get_best_classifier(x, y, classifier_perform_file)
-    save_classifiers(classifier_path_to_save, clf_list_to_save)
-    elapsed = time.time() - start
-    print("Total training time: " + str(elapsed))
+    # start = time.time()
+    # x, y = get_and_split_data_initial_data(training_input_file)
+    # clf_list_to_save = split_data_and_get_best_classifier(x, y, classifier_perform_file)
+    # save_classifiers(classifier_path_to_save, clf_list_to_save)
+    # elapsed = time.time() - start
+    # print("Total training time: " + str(elapsed))
 
     # open the classifier of previous
     start = time.time()
     classifier_list_to_use = find_prev_classifier_version(ADDITIONAL_FILES_PATH, bugID)
-    func_name, test_name, x, y = get_and_split_data_initial_data(prediction_input_file)
+    func_name, test_name, x, y = get_and_split_partial_predicted_data(prediction_input_file)
     y_prediction_probability_list = use_classifier(classifier_list_to_use, x)
     results_list = []
     for y_pred, name in y_prediction_probability_list:
         y_pred.index = test_name.index
         tmp_result = pd.concat([test_name, func_name, y_pred, y], axis=1)
-        index_to_remove_1 = [x for x in tmp_result.index[tmp_result['y_pred'] < 0.001]]
+        index_to_remove_1 = [x for x in tmp_result.index[tmp_result['y_pred'] < 0.0001]]
         index_to_remove_2 = [x for x in tmp_result.index[tmp_result['y'] == 0]]
         index_to_remove = list(set(index_to_remove_1).intersection(index_to_remove_2))
         # res2 = tmp_result.drop(index_to_remove)
         results_list.append((tmp_result.drop(index_to_remove), name))
     print "----------Create File Input_Diagnoser CSV--------------"
-    save_results_and_print_score(output_file, results_list)
+    save_results_and_print_score(output_file, results_list, True)
     elapsed = time.time() - start
     print("Total predicting time: " + str(elapsed))
 
 
 def save_classifiers(classifier_path_to_save, clf_list_to_save):
+    # remove old classifiers
+    additional_path = classifier_path_to_save[0:classifier_path_to_save.rindex("\\")]
+    old_clf_to_remove = [os.path.join(additional_path, x) for x in os.listdir(additional_path) if ".pkl" in x]
+    for clf_to_delete in old_clf_to_remove:
+        os.remove(clf_to_delete)
+    # save new classifiers
     counter = 0
     for clf, test_size in clf_list_to_save:
         new_classifier_path_to_save = classifier_path_to_save.split(".")[0] + "_" + str(test_size) + ".pkl"
@@ -121,34 +129,57 @@ def use_classifier(previous_version_classifiers, x):
 
     return y_pred_proba_list
 
-
 def get_and_split_data_initial_data(input_file):
-    dataset = pd.read_csv(input_file)
+    start_time = time.time()
+    dataset = pd.read_csv(input_file, usecols=list(range(2, 11)))
     dataset = dataset.dropna()
+    elapsed_time = time.time() - start_time
+    print("Total reading pandas time:" + str(elapsed_time))
+
     # ********************create classifier******************
     x = dataset.loc[:, 'PathLength':'FuncSim']
     y = dataset.loc[:,'y']
+    if len([x for x in dataset.index[dataset['PathExistence'] == 1]]) < 100:
+        raise Exception('Not enough paths')
+
+    return x, y
+
+def get_and_split_partial_predicted_data(input_file):
+    start_time = time.time()
+    dataset = pd.read_csv(input_file, usecols=list(range(2, 11)))
+    dataset = dataset.dropna()
+    elapsed_time = time.time() - start_time
+    print("Total reading pandas time:" + str(elapsed_time))
+
+    # ********************create classifier******************
     testName = dataset.loc[:, 'TestName']
     funcName = dataset.loc[:, 'FuncName']
-    return funcName, testName, x, y
+    x = dataset.loc[:, 'PathLength':'FuncSim']
+    y = dataset.loc[:,'y']
+    if len([x for x in dataset.index[dataset['PathExistence'] == 1]]) < 100:
+        raise Exception('Not enough paths')
+
+    return testName, funcName, x, y
 
 
-def save_results_and_print_score(output_result_file, results_list):
+def save_results_and_print_score(output_result_file, results_list,is_it_first_res):
     for counter, res in enumerate(results_list):
         new_output_file = output_result_file.split(".")[0] + "_" + res[1].name.split(".")[1] + ".csv"
-        if os.path.isfile(new_output_file):
+        if is_it_first_res and os.path.isfile(new_output_file):
             os.remove(new_output_file)
         res[0].to_csv(new_output_file, sep=' ', encoding='utf-8', index=False)
 
 
 if __name__ == '__main__':
-    bug_id = '33'
-    training_input_file = r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version\lang_33_fix\additionalFiles\trainingInputToNN.csv'
-    prediction_input_file = r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version\lang_33_fix\additionalFiles\predictionInputToNN.csv'
-    classifier_file = r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version\lang_33_fix\additionalFiles\classifier.pkl'
-    output_file = r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version\lang_33_fix\additionalFiles\score_33.csv'
-    preform_f = r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version\lang_33_fix\additionalFiles\classifier_score_33.txt'
-    add_file = r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version\lang_33_fix\additionalFiles'
+    bug_id = '2'
+    # r'C:\Users\eyalhad\Desktop\runningProjects\Math_version\math_2_fix\additionalFiles\predictionInputToNN.csv'
+    training_input_file = r'C:\Users\eyalhad\Desktop\runningProjects\Math_version\math_2_fix\additionalFiles\predictionInputToNN.csv'
+    prediction_input_file = r'C:\Users\eyalhad\Desktop\runningProjects\Math_version\math_2_fix\additionalFiles\predictionInputToNN.csv'
+    r'C:\Users\eyalhad\Desktop\runningProjects\Math_version\math_2_fix\additionalFiles\predictionInputToNN.csv'
+    classifier_file = r'C:\Users\eyalhad\Desktop\runningProjects\Math_version\math_2_fix\additionalFiles\classifier.pkl'
+    output_file = r'C:\Users\eyalhad\Desktop\runningProjects\Math_version\math_2_fix\additionalFiles\score_2.csv'
+    preform_f = r'C:\Users\eyalhad\Desktop\runningProjects\Math_version\math_2_fix\additionalFiles\classifier_score_33.txt'
+    add_file = r'C:\Users\eyalhad\Desktop\runningProjects\Math_version\math_2_fix\additionalFiles'
 
     classifyCode(bug_id, training_input_file, prediction_input_file, classifier_file, output_file, preform_f, add_file)
     arr = sys.argv

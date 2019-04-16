@@ -1,5 +1,9 @@
 import csv
 import os
+import copy
+import random
+import time
+import pandas as pd
 
 
 def writeTraceFile(traces_dicionary, TRACE_FILE):
@@ -38,8 +42,9 @@ def add_vectors(vector_to_add, sum_vector):
     tmp_vector = [x + y for x, y in zip(float_vector_to_add, sum_vector)]
     return tmp_vector
 
+
 # don't use right now
-def summary_results(RESULTS_FILE, SUM_RESULTS_FILE):
+def diagnose_summary_results(RESULTS_FILE, SUM_RESULTS_FILE):
     number_of_bugs = 0
     amir_precision = [0] * 150
     amir_recall = [0] * 150
@@ -91,7 +96,7 @@ def summary_results(RESULTS_FILE, SUM_RESULTS_FILE):
         f.write(str(random_recall))
 
 
-def calculate_classifier_results(PATH):
+def calculate_prediction_results(PATH):
     result = []
     proj_folders = [os.path.join(PATH, folder) for folder in os.listdir(PATH) if "fix" in folder]
     additional_folders = [os.path.join(proj_folder, "additionalFiles") for proj_folder in proj_folders
@@ -102,30 +107,66 @@ def calculate_classifier_results(PATH):
         if len(tmp_res) > 0:
             result.append(tmp_res)
 
-    result_summary = sum_results(result)
+    result_summary = old_sum_results(result)
 
     res_file_name = os.path.join(PATH, r'classifier_sum_res.txt')
-
-    if os.path.exists(res_file_name):
-        res_file = open(res_file_name, 'a+')
-    else:
-        res_file = open(res_file_name, 'w+')
-
+    res_file = open(res_file_name, 'w+')
     for item in result_summary:
         res_file.write("%s\n" % item)
+    # for k, v in result_summary.items():
+    #     res_file.write(str(k) + "\r\n" + str(v) + '\n\n')
 
     res_file.close()
 
 
-def sum_results(classification_score_files):
+def update_dict(res_dic, classifier, key):
+    splited_lines = classifier[classifier.index("accuracy"):classifier.index("]]") + 2].split("\\r\\n")
+    splited_lines[1] = splited_lines[1][splited_lines[1].index("auc"):]
+    splited_lines[2] = splited_lines[2][splited_lines[2].index("confusion_matrix:"):]
+    acc = float(splited_lines[0].split(":")[1])
+    auc = float(splited_lines[1].split(":")[1])
+    conf_mat = splited_lines[2].split("\\n")
+    tn, fp = map(float, filter(None, conf_mat[0].split("[[")[1].split("]")[0].split(" ")))
+    fn, tp = map(float, filter(None, conf_mat[1].split("[")[1].split("]]")[0].split(" ")))
+    res_dic[key][1] = res_dic[key][1] + acc
+    res_dic[key][3] = res_dic[key][3] + auc
+    res_dic[key][5] = res_dic[key][5] + (tn / (tn + fp + fn + tp) * 100)
+    res_dic[key][7] = res_dic[key][7] + (fp / (tn + fp + fn + tp) * 100)
+    res_dic[key][9] = res_dic[key][9] + (fn / (tn + fp + fn + tp) * 100)
+    res_dic[key][11] = res_dic[key][11] + (tp / (tn + fp + fn + tp) * 100)
+    res_dic[key][13] = res_dic[key][13] + 1
+
+    i = 8
+
+
+def summarize_classifier_results(classification_score_files):
+    sum_vector = ["acc:", 0, "auc:", 0, "tn:", 0, "fp:", 0, "fn:", 0, "tp:", 0, "count:", 0]
+    # dict_keys = ['0.9_s', '0.9_d', '0.99_s', '0.99_d', '0.999_s', '0.999_d', '0.9999_s', '0.9999_d']
+    res_dic = {"0.9_s": copy.copy(sum_vector), "0.9_d": copy.copy(sum_vector), "0.99_s": copy.copy(sum_vector),
+               "0.99_d": copy.copy(sum_vector), "0.999_s": copy.copy(sum_vector), "0.999_d": copy.copy(sum_vector),
+               "0.9999_s": copy.copy(sum_vector), "0.9999_d": copy.copy(sum_vector)}
+    for classification_file in classification_score_files:
+        with open(classification_file[0]) as f:
+            content = f.readlines()
+            content = str(content).split("----------------")[1:]
+            for classifier, key in zip(content, res_dic.keys()):
+                update_dict(res_dic, classifier[classifier.index("accuracy"):classifier.index("]]") + 2], key)
+    for key in res_dic.keys():
+        for i in range(1, 12, 2):
+            res_dic[key][i] /= 114
+
+    return res_dic
+
+
+def old_sum_results(classification_score_files):
     sum_vector = ["acc:", 0, "auc:", 0, "tn:", 0, "fp:", 0, "fn:", 0, "tp:", 0, "count:", 0]
     for classification_file in classification_score_files:
         with open(classification_file[0]) as f:
             content = f.readlines()
-            acc = float(content[0].split(":")[1])
-            auc = float(content[1].split(":")[1])
-            tn, fp = map(float, filter(None, content[2].split("[[")[1].split("]")[0].split(" ")))
-            fn, tp = map(float, filter(None, content[3].split("[")[1].split("]]")[0].split(" ")))
+            acc = float(content[6].split(":")[1])
+            auc = float(content[7].split(":")[1])
+            tn, fp = map(float, filter(None, content[8].split("[[")[1].split("]")[0].split(" ")))
+            fn, tp = map(float, filter(None, content[9].split("[")[1].split("]]")[0].split(" ")))
             sum_vector[1] = sum_vector[1] + acc
             sum_vector[3] = sum_vector[3] + auc
             sum_vector[5] = sum_vector[5] + (tn / (tn + fp + fn + tp) * 100)
@@ -141,15 +182,36 @@ def find_prev_classifier_version(ADDITIONAL_FILES_PATH, bug_id):
     tmp_add_file = ADDITIONAL_FILES_PATH
     for num in range((int(bug_id) - 1), 0, -1):
         tmp_add_file = tmp_add_file.replace(bug_id, str(num))
-        if os.path.isfile(os.path.join(tmp_add_file, r"classifier_0.9.pkl")):
-            return [os.path.join(ADDITIONAL_FILES_PATH, f) for f in os.listdir(tmp_add_file) if f.endswith('.pkl')]
+        if os.path.isfile(os.path.join(tmp_add_file, r"classifier_0.5.pkl")):
+            return [os.path.join(tmp_add_file, f) for f in os.listdir(tmp_add_file) if f.endswith('.pkl')]
         else:
             tmp_add_file = tmp_add_file.replace(str(num), bug_id)
 
     return [os.path.join(ADDITIONAL_FILES_PATH, f) for f in os.listdir(tmp_add_file) if f.endswith('.pkl')]
 
 
+def partial_predicted_data(input_file):
+    f = open(input_file)
+    next(f)
+    data_to_predict = []
+    cnt = 0
+    first_line = 1
+    old_line = ' '
+    for line in f:
+        if first_line == 0 and old_line.split(',')[0] != line.split(',')[0]:
+            print("process_data(data_to_predict)")
+            data_to_predict = []
+            cnt = 0
+        data_to_predict.append(line)
+        old_line = line
+        first_line = 0
+        cnt = cnt + 1
+
+
 if __name__ == '__main__':
-    # calculate_classifier_results(r'C:\Users\eyalhad\Desktop\runningProjects\Math_version')
-    print(find_prev_classifier_version(r'C:\Users\eyalhad\Desktop\runningProjects\Math_version\math_6_fix\additionalFiles', '6'))
+    prediction_input_file = r'C:\Users\eyalhad\Desktop\runningProjects\Math_version\math_2_fix\additionalFiles\predictionInputToNN.csv'
+    partial_predicted_data(prediction_input_file)
+    # calculate_prediction_results(r'C:\Users\eyalhad\Desktop\runningProjects\Math_version')
+    # print(find_prev_classifier_version(r'C:\Users\eyalhad\Desktop\runningProjects\Math_version\math_6_fix
+    # \additionalFiles', '6'))
     i = 9
