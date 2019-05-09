@@ -68,18 +68,18 @@ public class createInputToNN {
         insertIndexToCSV(lineLength ,trainingWriter);
         insertIndexToCSV(lineLength ,predictWriter);
         boolean belongToTrain;
-        for (int i = 0; i < targetFunctionList.size(); i++) {
+        for (int i = 0; i < testsList.size(); i++) {
             if (i % 1000 == 0) {
-                int percent = (int) ((i * 100.0f) / targetFunctionList.size());
+                int percent = (int) ((i * 100.0f) / testsList.size());
                 System.out.println(percent + "% of the functions were finished");
             }
-            String targetFunction = targetFunctionList.get(i);
+            String testFunction = testsList.get(i);
             belongToTrain = false;
             if (i % 20 == 0) {
                 belongToTrain = true;
             }
 
-            createCSV(testsList, traceFolder, targetFunction, directedGraph, trainingWriter,predictWriter, lineLength, pathCount, vertexDic,traceDic,belongToTrain);
+            createCSV(targetFunctionList, traceFolder, testFunction, directedGraph, trainingWriter,predictWriter, lineLength, pathCount, vertexDic,traceDic,belongToTrain);
         }
         returnError(FULL_ADDITIONAL_FILES_PATH + "\\errorFile.txt", 0);
 
@@ -253,29 +253,29 @@ public class createInputToNN {
 
 
 
-    private static int createCSV(List<String> testClassList, File testFolder, String targetFunction, DirectedGraph<String, DefaultEdge> callGraph, FileWriter trainingWriter, FileWriter predictWriter, int lineLength, int[][] pathCount, Map<String, Integer> vertexDic, Map<String, List<String>> traceDic,boolean belongToTraining) throws IOException {
+    private static int createCSV(List<String> funcNameList, File testFolder, String testName, DirectedGraph<String, DefaultEdge> callGraph, FileWriter trainingWriter, FileWriter predictWriter, int lineLength, int[][] pathCount, Map<String, Integer> vertexDic, Map<String, List<String>> traceDic,boolean belongToTraining) throws IOException {
 
         String lineArray[] = new String[lineLength];
         int wroteLine = 0;
         File[] files = testFolder.listFiles();
         int pathLength,numberOfPath;
-        for (String sourceFunction:testClassList)
+        for (String functionName:funcNameList)
         {
-            lineArray[0] = targetFunction; //enter function name
-            lineArray[1] = sourceFunction; //enter test name
+            lineArray[0] = functionName; //enter function name
+            lineArray[1] = testName; //enter test name
             assert files != null;
-            lineArray[2] = String.valueOf(isItContainTarget(sourceFunction,targetFunction,traceDic)); // 1/0 if the function is in the trace
-            pathLength = getPathLength(callGraph,sourceFunction,targetFunction);
+            lineArray[2] = String.valueOf(isItContainTarget(testName,functionName,traceDic)); // 1/0 if the function is in the trace
+            pathLength = getPathLength(callGraph,testName,functionName);
             lineArray[3] = String.valueOf(pathLength); // enter path length
 
 
-            if(callGraph.containsVertex(targetFunction))
-                lineArray[4] = String.valueOf(callGraph.inDegreeOf(targetFunction)); //enter the function degree in the graph
+            if(callGraph.containsVertex(functionName))
+                lineArray[4] = String.valueOf(callGraph.inDegreeOf(functionName)); //enter the function degree in the graph
             else
                 lineArray[4] = String.valueOf(0);
 
-            if(callGraph.containsVertex(sourceFunction))
-                lineArray[5] = String.valueOf(callGraph.outDegreeOf(sourceFunction)); //enter the test out degree in the graph
+            if(callGraph.containsVertex(testName))
+                lineArray[5] = String.valueOf(callGraph.outDegreeOf(testName)); //enter the test out degree in the graph
             else
                 lineArray[5] = String.valueOf(0);
             numberOfPath = 0;
@@ -283,21 +283,21 @@ public class createInputToNN {
             {
                 numberOfPath = 0;
             }
-            else if(vertexDic.get(sourceFunction) != null && vertexDic.get(targetFunction) != null)
+            else if(vertexDic.get(functionName) != null && vertexDic.get(testName) != null)
             {
                 numberOfPath = 1;
-//                numberOfPath = getNumOfPath(callGraph,sourceFunction,targetFunction,2);
-//                numberOfPath = pathCount[vertexDic.get(sourceFunction)][vertexDic.get(targetFunction)];
+//                numberOfPath = getNumOfPath(callGraph,functionName,testName,2);
+//                numberOfPath = pathCount[vertexDic.get(functionName)][vertexDic.get(testName)];
             }
 
             lineArray[6] = String.valueOf(numberOfPath); // enter the number of difference paths
-            lineArray[7] = nameSimilarity(targetFunction.substring(targetFunction.lastIndexOf(".") + 1,targetFunction.indexOf(":")),sourceFunction.substring(sourceFunction.lastIndexOf(".") + 1,sourceFunction.indexOf(":"))); //class name similarity
-            lineArray[8] = nameSimilarity(targetFunction.split(":")[1],sourceFunction.split(":")[1]); //function name similarity
+            lineArray[7] = nameSimilarity(functionName.substring(functionName.lastIndexOf(".") + 1,functionName.indexOf(":")),testName.substring(testName.lastIndexOf(".") + 1,testName.indexOf(":"))); //class name similarity
+            lineArray[8] = nameSimilarity(functionName.split(":")[1],testName.split(":")[1]); //function name similarity
 
-            String simTest = sourceFunction.replace("Test","").replace("test","");
+            String simTest = testName.replace("Test","").replace("test","");
 
-            lineArray[9] = similarity(classNameFromPath(targetFunction),classNameFromPath(simTest));
-            lineArray[10] = similarity(funcNameFromPath(targetFunction),funcNameFromPath(simTest));
+            lineArray[9] = similarity(classNameFromPath(functionName),classNameFromPath(simTest));
+            lineArray[10] = similarity(funcNameFromPath(functionName),funcNameFromPath(simTest));
 
             writeLineToCSV(lineArray,predictWriter);
             if(belongToTraining)

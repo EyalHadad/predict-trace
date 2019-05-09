@@ -1,4 +1,5 @@
 import csv
+import io
 import os
 import copy
 import random
@@ -163,6 +164,7 @@ def old_sum_results(classification_score_files):
     for classification_file in classification_score_files:
         with open(classification_file[0]) as f:
             content = f.readlines()
+            # content = content[11:]
             acc = float(content[6].split(":")[1])
             auc = float(content[7].split(":")[1])
             tn, fp = map(float, filter(None, content[8].split("[[")[1].split("]")[0].split(" ")))
@@ -190,28 +192,11 @@ def find_prev_classifier_version(ADDITIONAL_FILES_PATH, bug_id):
     return [os.path.join(ADDITIONAL_FILES_PATH, f) for f in os.listdir(tmp_add_file) if f.endswith('.pkl')]
 
 
-def partial_predicted_data(input_file):
-    f = open(input_file)
-    next(f)
-    data_to_predict = []
-    cnt = 0
-    first_line = 1
-    old_line = ' '
-    for line in f:
-        if first_line == 0 and old_line.split(',')[0] != line.split(',')[0]:
-            print("process_data(data_to_predict)")
-            data_to_predict = []
-            cnt = 0
-        data_to_predict.append(line)
-        old_line = line
-        first_line = 0
-        cnt = cnt + 1
-
-
 if __name__ == '__main__':
-    prediction_input_file = r'C:\Users\eyalhad\Desktop\runningProjects\Math_version\math_2_fix\additionalFiles\predictionInputToNN.csv'
-    partial_predicted_data(prediction_input_file)
-    # calculate_prediction_results(r'C:\Users\eyalhad\Desktop\runningProjects\Math_version')
+    # prediction_input_file = r'C:\Users\eyalhad\Desktop\runningProjects\Math_version\math_2_fix\additionalFiles\predictionInputToNN.csv'
+    # partial_predicted_data(prediction_input_file)
+    calculate_prediction_results(r'C:\Users\eyalhad\Desktop\runningProjects\Math_version')
+    # diagnose_summary_results(r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version\results.csv', r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version\results_sum.csv')
     # print(find_prev_classifier_version(r'C:\Users\eyalhad\Desktop\runningProjects\Math_version\math_6_fix
     # \additionalFiles', '6'))
     i = 9

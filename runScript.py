@@ -11,14 +11,14 @@ import time
 import timeit
 # # TODO project properties
 
-ROOT_DIR = r'C:\Users\eyalhad\Desktop\runningProjects\Math_version'
-CLONE_DIR = "\\defects4j-math"
-PROJECT_NAME = "math"
+# ROOT_DIR = r'C:\Users\eyalhad\Desktop\runningProjects\Math_version'
+# CLONE_DIR = "\\defects4j-math"
+# PROJECT_NAME = "math"
 
 # TODO project properties
-# ROOT_DIR = r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version'
-# CLONE_DIR = "\\BugMinerResults-lang"
-# PROJECT_NAME = "lang"
+ROOT_DIR = r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version'
+CLONE_DIR = "\\BugMinerResults-lang"
+PROJECT_NAME = "lang"
 
 # TODO JAVA code path
 JAVA_CODE_DIR = r'C:\Users\eyalhad\Desktop\predict-trace\javaCode'
@@ -67,8 +67,8 @@ def run_classifier(ADDITIONAL_FILES_PATH, bug_id):
     classifier_perform_file = os.path.join(ADDITIONAL_FILES_PATH, "classifier_score_" + bug_id + ".txt")
     print("-----Bug Num: " + str(bug_id) + "-----")
     start_t = timeit.default_timer()
-    ClassifiersNeural.classifyCode(bug_id, training_input_to_NN, prediction_input_to_NN, classifier_file, output_file,
-                                   classifier_perform_file, ADDITIONAL_FILES_PATH)
+    ClassifiersNeural.classify_code(bug_id, training_input_to_NN, prediction_input_to_NN, classifier_file, output_file,
+                                    classifier_perform_file, ADDITIONAL_FILES_PATH)
     total_t = timeit.default_timer() - start_t
     writeToLogTime("Classifier " + str(total_t / 60) + "\r\n")
 
@@ -258,44 +258,44 @@ def myFunc(bug_id, fix_version, bug_version, git_repo_path):
     # todo MVN and folders
     # mvn_dir_commands(PROJECT_VERSION, fix_version, git_repo_path)
     # todo call graph
-    CALL_GARPH_PATH = call_graph_creation(PROJECT_VERSION)
+    # CALL_GARPH_PATH = call_graph_creation(PROJECT_VERSION)
 
     # todo get function names
-    func_name_list = get_func_names(git_repo_local_path, bug_version, fix_version)
-    if len(func_name_list) == 0:
-        raise NameError('No buggy functions')
+    # func_name_list = get_func_names(git_repo_local_path, bug_version, fix_version)
+    # if len(func_name_list) == 0:
+    #     raise NameError('No buggy functions')
     # todo tracer_parsing
     # tracer_and_parse(DEBUGGER_TESTS_PATH, PROJECT_VERSION, bug_id, bug_version, fix_version,git_repo_local_path, trace_file)
     # todo input_to_NN
-    create_input_NN(ADDITIONAL_FILES_PATH, bug_id, error_file, func_name_list)
+    # create_input_NN(ADDITIONAL_FILES_PATH, bug_id, error_file, func_name_list)
 
     # todo check if error during create_input_NN
-    file = open(error_file, 'r')
-    res = file.read()
-    file.close()
-    if res == '1\n':
-        writeToLog(bug_id, func_name_list)
-        return 7
+    # file = open(error_file, 'r')
+    # res = file.read()
+    # file.close()
+    # if res == '1\n':
+    #     writeToLog(bug_id, func_name_list)
+    #     return 7
 
     # todo run the classifier code
-    run_classifier(ADDITIONAL_FILES_PATH, bug_id)
+    # run_classifier(ADDITIONAL_FILES_PATH, bug_id)
 
     # todo run createMatrixTxt code
 
     # createMatrixTxt_code(ADDITIONAL_FILES_PATH, bug_id, func_name_list)
 
     # todo check if error during createMatrixTxt
-    file = open(error_file, 'r')
-    res = file.read()
-    file.close()
-    if res == '1\n':
-        writeToLog(bug_id, func_name_list)
-        return 7
+    # file = open(error_file, 'r')
+    # res = file.read()
+    # file.close()
+    # if res == '1\n':
+    #     writeToLog(bug_id, func_name_list)
+    #     return 7
     # todo run_ diagnoser
-    # run_diagnoser(ADDITIONAL_FILES_PATH, bug_id)
+    run_diagnoser(ADDITIONAL_FILES_PATH, bug_id)
 
     total_elapsed = timeit.default_timer() - total_start_time
-    # writeToLogTime("Total Bug" + str(bug_id) + " time: " + str(total_elapsed / 60) + "\r\n")
+    writeToLogTime("Total Bug" + str(bug_id) + " time: " + str(total_elapsed / 60) + "\r\n")
 
 
 def read_commit_file(commit_db, GIT_REPO_PATH, start_bug_num):
@@ -323,7 +323,7 @@ def read_commit_file(commit_db, GIT_REPO_PATH, start_bug_num):
             fix_version = split_content[2]
         if int(bug_num) not in black_list:
             if int(bug_num) >= int(start_bug_num):
-                if int(bug_num) > 0 :
+                if int(bug_num) > 0:
                     try:
                         myFunc(bug_num, fix_version, bug_version, GIT_REPO_PATH)
                     except Exception as e:

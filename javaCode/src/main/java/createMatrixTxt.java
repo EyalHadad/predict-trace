@@ -7,8 +7,8 @@ import java.util.*;
 public class createMatrixTxt {
     public static String bugNumberString = "1", additional_files_path = "", regularMatrixTextFolder = "C:\\Users\\eyalhad\\Desktop\\Math_data\\AmirTxtData";
     public static String[] bugFuncNames;
-    public static String[] inputFile = new String[4];
-    public static String[] outputFilesNames = new String[4];
+    public static String[] inputFile = new String[2];
+    public static String[] outputFilesNames = new String[2];
     public static ArrayList<Integer> bugNumbers =new ArrayList<Integer>();
     public static int category, epsilon = 30, delta = 30;
     public static Map<String, Integer> testFuncDic = new  HashMap<String,Integer>(), funcNumberDic = new HashMap<String, Integer>();
@@ -25,20 +25,36 @@ public class createMatrixTxt {
         System.out.println("--------CREATE AMIR FILE----------");
         category = 1;
 
-        for( int i=2;i<outputFilesNames.length;i++)
+        traceDic.clear();
+        getTestsAndBugNum(inputFile[0],0);
+        StringBuilder failTestClass = writeTextFile(traceDic,additional_files_path + "\\inputMatrix_amir.txt",funcNumberDic);
+        if(failTestClass.length()== 0)
         {
-            traceDic.clear();
-            getTestsAndBugNum(inputFile[i],i);
-            StringBuilder failTestClass = writeTextFile(traceDic,outputFilesNames[i],funcNumberDic);
-            if(failTestClass.length()== 0)
-            {
-                sendFeedback(additional_files_path+ "\\errorFile.txt", 1);
-                break;
-            }
-            enterFailTestToFiles(failTestClass, outputFilesNames[i]);
-            category = 3;
-
+            sendFeedback(additional_files_path+ "\\errorFile.txt", 1);
         }
+        enterFailTestToFiles(failTestClass, additional_files_path + "\\inputMatrix_amir.txt");
+        category = 3;
+        failTestClass = writeTextFile(traceDic,additional_files_path + "\\inputMatrix_eyal_1.txt",funcNumberDic);
+        if(failTestClass.length()== 0)
+        {
+            sendFeedback(additional_files_path+ "\\errorFile.txt", 1);
+        }
+        enterFailTestToFiles(failTestClass, additional_files_path + "\\inputMatrix_eyal_1.txt");
+
+//        for( int i=2;i<outputFilesNames.length;i++)
+//        {
+//            traceDic.clear();
+//            getTestsAndBugNum(inputFile[i],i);
+//            StringBuilder failTestClass = writeTextFile(traceDic,outputFilesNames[i],funcNumberDic);
+//            if(failTestClass.length()== 0)
+//            {
+//                sendFeedback(additional_files_path+ "\\errorFile.txt", 1);
+//                break;
+//            }
+//            enterFailTestToFiles(failTestClass, outputFilesNames[i]);
+//            category = 3;
+//
+//        }
         sendFeedback(additional_files_path + "\\errorFile.txt", 0);
     }
 
@@ -58,10 +74,10 @@ public class createMatrixTxt {
             br.readLine(); //remove first line
             funcIndex=0;
             while ((line = br.readLine()) != null) {
-                lineData = line.split(" ");
+                lineData = line.split(",");
                 String testFuncNamesConcate = lineData[0] + lineData[1];
                 //create funcNumberDic to get number for every function
-                if(fileIndex==2)
+                if(fileIndex==0)
                 {
                     if(!funcNumberDic.containsKey(lineData[1]))
                     {
@@ -364,8 +380,8 @@ public class createMatrixTxt {
         additional_files_path = args[2];
         outputFilesNames[0] = additional_files_path + "\\inputMatrix_amir.txt";
         outputFilesNames[1] = additional_files_path + "\\inputMatrix_eyal_1.txt";
-        outputFilesNames[2] = additional_files_path + "\\inputMatrix_eyal_2.txt";
-        outputFilesNames[3] = additional_files_path + "\\inputMatrix_eyal_3.txt";
+//        outputFilesNames[2] = additional_files_path + "\\inputMatrix_eyal_2.txt";
+//        outputFilesNames[3] = additional_files_path + "\\inputMatrix_eyal_3.txt";
         StringBuilder inputNew = new StringBuilder();
         String[] stringList = {"9","99","999","9999"};
         for(int i=0;i<4;i ++)
@@ -373,10 +389,12 @@ public class createMatrixTxt {
             inputNew.append(additional_files_path).append("\\score_").append(bugNumberString).append("_").append(stringList[i]).append(".csv ");
         }
         String[] inputArray = inputNew.toString().split(" ");
-        inputFile[0] = inputArray[0];
-        inputFile[1] = inputArray[0];
-        inputFile[2] = inputArray[1];
-        inputFile[3] = inputArray[2];
+
+//        additional_files_path + "\\score_1_5.csv";
+        inputFile[0] = additional_files_path + "\\score_" + bugNumberString + "_5.csv";
+        inputFile[1] = inputArray[1];
+//        inputFile[2] = inputArray[1];
+//        inputFile[3] = inputArray[2];
     }
 
 }
