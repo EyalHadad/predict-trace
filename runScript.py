@@ -1,4 +1,5 @@
 from mvnpy import Repo
+import traceback
 from additional_functions import *
 import subprocess
 import sys
@@ -16,7 +17,7 @@ import timeit
 # PROJECT_NAME = "math"
 
 # TODO project properties
-ROOT_DIR = r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version'
+ROOT_DIR = r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version_2'
 CLONE_DIR = "\\BugMinerResults-lang"
 PROJECT_NAME = "lang"
 
@@ -29,6 +30,7 @@ MY_CODE_JAVA_JAR = os.path.join(JAVA_CODE_DIR, r'target\uber-Code-1.0-SNAPSHOT.j
 RESULTS_FILE = ROOT_DIR + r'\results.csv'
 SUM_RESULTS_FILE = ROOT_DIR + r'\sum_results.csv'
 LOG_FILE = ROOT_DIR + r'\log.txt'
+FUNC_RECORD_FILE = ROOT_DIR + r'\func_record_file.txt'
 TIME_FILE = ROOT_DIR + r'\times.txt'
 ERRORS_FILE = ROOT_DIR + r'\errors.txt'
 DEBUGGER_TESTS_DIR = ROOT_DIR + r'\DebuggerTests'
@@ -60,8 +62,8 @@ def createMatrixTxt_code(ADDITIONAL_FILES_PATH, bug_id, func_name_list):
 
 
 def run_classifier(ADDITIONAL_FILES_PATH, bug_id):
-    prediction_input_to_NN = os.path.join(ADDITIONAL_FILES_PATH, r"predictionInputToNN.csv")
-    training_input_to_NN = os.path.join(ADDITIONAL_FILES_PATH, r"trainingInputToNN.csv")
+    prediction_input_to_NN = os.path.join(ADDITIONAL_FILES_PATH, r"predictionInputToNNSeq.csv")
+    training_input_to_NN = os.path.join(ADDITIONAL_FILES_PATH, r"trainingInputToNNSeq.csv")
     classifier_file = os.path.join(ADDITIONAL_FILES_PATH, r"classifier.pkl")
     output_file = os.path.join(ADDITIONAL_FILES_PATH, "score_" + bug_id + ".csv")
     classifier_perform_file = os.path.join(ADDITIONAL_FILES_PATH, "classifier_score_" + bug_id + ".txt")
@@ -220,7 +222,15 @@ def writeToLog(bug_id, func_name_list):
         log_file = open(LOG_FILE, 'a+')
     else:
         log_file = open(LOG_FILE, 'w+')
-    log_file.write("Bug Num:" + bug_id + ",    " + str(func_name_list) + "\r\n");
+    log_file.write("Bug Num:" + bug_id + ",    " + str(func_name_list) + "\r\n")
+    log_file.close()
+
+def function_record(bug_id, func_name_list):
+    if os.path.exists(FUNC_RECORD_FILE):
+        log_file = open(FUNC_RECORD_FILE, 'a+')
+    else:
+        log_file = open(FUNC_RECORD_FILE, 'w+')
+    log_file.write("Bug Num:" + bug_id + ",    " + str(func_name_list) + "\r\n")
     log_file.close()
 
 
@@ -230,7 +240,7 @@ def writeToLogTime(msg):
     else:
         time_file = open(TIME_FILE, 'w+')
 
-    time_file.write(msg + "\r\n");
+    time_file.write(msg + "\r\n")
     time_file.close()
 
 
@@ -262,6 +272,7 @@ def myFunc(bug_id, fix_version, bug_version, git_repo_path):
 
     # todo get function names
     # func_name_list = get_func_names(git_repo_local_path, bug_version, fix_version)
+    # function_record(bug_id, func_name_list)
     # if len(func_name_list) == 0:
     #     raise NameError('No buggy functions')
     # todo tracer_parsing
@@ -298,9 +309,15 @@ def myFunc(bug_id, fix_version, bug_version, git_repo_path):
     writeToLogTime("Total Bug" + str(bug_id) + " time: " + str(total_elapsed / 60) + "\r\n")
 
 
-def read_commit_file(commit_db, GIT_REPO_PATH, start_bug_num):
-    black_list = [304]
+def init_address(root_dir, proj_name):
+    ROOT_DIR = root_dir
+    CLONE_DIR = "\\" + root_dir.split("\\")[-1].lower()
+    PROJECT_NAME = proj_name
 
+
+def read_commit_file(commit_db, GIT_REPO_PATH, start_bug_num, root_dir, proj_name):
+    black_list = []
+    # init_address(root_dir, proj_name)
     with open(commit_db) as f:
         content = f.readlines()
 
@@ -327,6 +344,7 @@ def read_commit_file(commit_db, GIT_REPO_PATH, start_bug_num):
                     try:
                         myFunc(bug_num, fix_version, bug_version, GIT_REPO_PATH)
                     except Exception as e:
+                        traceback.print_exc()
                         if hasattr(e, 'strerror'):
                             writeToLogError((str(e.strerror)), bug_num)
                             print(str(e.strerror))
@@ -337,5 +355,5 @@ def read_commit_file(commit_db, GIT_REPO_PATH, start_bug_num):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) == 4:
-        read_commit_file(sys.argv[1], sys.argv[2], sys.argv[3])
+    if len(sys.argv) == 6:
+        read_commit_file(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5])

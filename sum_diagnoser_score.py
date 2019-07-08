@@ -2,7 +2,7 @@ import csv
 import os
 
 
-def scan_csv(path):
+def scan_csv(path, new_res_file):
     with open(path) as csv_file:
         content = list(csv.reader(csv_file, delimiter=','))
         amir_length_count = 0
@@ -11,20 +11,26 @@ def scan_csv(path):
         eyal_last_score_sum = 0
         random_length_count = 0
         random_last_score_sum = 0
+        list_1 = []
+        list_2 = []
+        list_3 = []
         divide = 0
         for i in range(len(content)):
             # content[i] = list(filter(None, content[i]))
-            if len(content[i]) > 0 and 'Bug' in content[i][0] and 'Eyal' in content[i + 6][0] and 'Random' in \
+            if len(content[i]) > 0 and 'Bug' in content[i][0] and 'Prob' in content[i + 6][0] and 'Th_prob' in \
                     content[i + 11][0]:
                 content[i + 3] = list(filter(None, content[i + 3]))
                 content[i + 8] = list(filter(None, content[i + 8]))
                 content[i + 13] = list(filter(None, content[i + 13]))
-                if len(content[i + 3]) > 0:
+                if len(content[i + 3]) > 0 and sum([float(x) for x in content[i + 8]]) > 0 and sum([float(x) for x in content[i + 13]]) > 0:
                     amir_length_count = amir_length_count + len(content[i + 3])
+                    list_1.append(len(content[i + 3]))
                     amir_last_score_sum = amir_last_score_sum + float(content[i + 3][-1])
                     eyal_length_count = eyal_length_count + len(content[i + 8])
+                    list_2.append(len(content[i + 8]))
                     eyal_last_score_sum = eyal_last_score_sum + float(content[i + 8][-1])
                     random_length_count = random_length_count + len(content[i + 13])
+                    list_3.append(len(content[i + 13]))
                     random_last_score_sum = random_last_score_sum + float(content[i + 13][-1])
                     divide = divide + 1
 
@@ -32,6 +38,18 @@ def scan_csv(path):
                                    random_length_count / divide]
         average_last_core = ["Amir:", amir_last_score_sum / divide, "Eyal:", eyal_last_score_sum / divide, "Random:",
                              random_last_score_sum / divide]
+
+        f = open(new_res_file, 'a+')
+        f.write("Oracle:\n")
+        list_1.sort()
+        f.write(','.join([str(x) for x in list_1]))
+        f.write("\nProb:\n")
+        list_2.sort()
+        f.write(','.join([str(x) for x in list_2]))
+        f.write("\nTh_prob:\n")
+        list_3.sort()
+        f.write(','.join([str(x) for x in list_3]))
+        f.close()
 
     return average_number_of_steps, average_last_core
 
@@ -69,7 +87,7 @@ def create_roni_file(path, new_results_file):
             if len(content[i]) > 0 and 'Bug' in content[i][0] and 'Eyal' in content[i + 6][0] and 'Random' in \
                     content[i + 11][0]:
                 project_name = path.split("\\")[5].split("_")[0]
-                bug_num= content[i][0].replace("Bug num", "")
+                bug_num = content[i][0].replace("Bug num", "")
                 actual_precision = list(filter(None, content[i + 3]))
                 actual_recall = list(filter(None, content[i + 5]))
                 predicted_precision = list(filter(None, content[i + 8]))
@@ -87,7 +105,7 @@ if __name__ == '__main__':
     csv_file_path = r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version\results.csv'
     new_result = r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version\results_roni.csv'
     create_roni_file(csv_file_path,new_result)
-    avg_len, avg_last_score = scan_csv(csv_file_path)
+    avg_len, avg_last_score = scan_csv(csv_file_path, new_result)
     print_results()
     # csv_file_path = r'C:\Users\Eyal-TLV\Desktop\results\mathResults.csv'
     # avg_len, avg_last_score = scan_csv(csv_file_path)

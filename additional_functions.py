@@ -5,6 +5,7 @@ import copy
 import random
 import time
 import pandas as pd
+import shutil
 
 
 def writeTraceFile(traces_dicionary, TRACE_FILE):
@@ -107,16 +108,10 @@ def calculate_prediction_results(PATH):
                    if "classifier_score" in file]
         if len(tmp_res) > 0:
             result.append(tmp_res)
-
-    result_summary = old_sum_results(result)
-
-    res_file_name = os.path.join(PATH, r'classifier_sum_res.txt')
+    res_file_name = os.path.join(PATH, r'classifier_sum_res_lang_deep.csv')
     res_file = open(res_file_name, 'w+')
-    for item in result_summary:
-        res_file.write("%s\n" % item)
-    # for k, v in result_summary.items():
-    #     res_file.write(str(k) + "\r\n" + str(v) + '\n\n')
-
+    res_file.write("Bug Num,AUC,Acc,Tn,Fp,Fn,Tp\n")
+    result_summary = old_sum_results(result, res_file)
     res_file.close()
 
 
@@ -159,23 +154,28 @@ def summarize_classifier_results(classification_score_files):
     return res_dic
 
 
-def old_sum_results(classification_score_files):
+def old_sum_results(classification_score_files, res_file):
     sum_vector = ["acc:", 0, "auc:", 0, "tn:", 0, "fp:", 0, "fn:", 0, "tp:", 0, "count:", 0]
     for classification_file in classification_score_files:
         with open(classification_file[0]) as f:
             content = f.readlines()
             # content = content[11:]
-            acc = float(content[6].split(":")[1])
-            auc = float(content[7].split(":")[1])
-            tn, fp = map(float, filter(None, content[8].split("[[")[1].split("]")[0].split(" ")))
-            fn, tp = map(float, filter(None, content[9].split("[")[1].split("]]")[0].split(" ")))
+            acc = float(content[17].split(":")[1])
+            auc = float(content[18].split(":")[1])
+            tn, fp = map(float, filter(None, content[19].split("[[")[1].split("]")[0].split(" ")))
+            fn, tp = map(float, filter(None, content[20].split("[")[1].split("]]")[0].split(" ")))
             sum_vector[1] = sum_vector[1] + acc
             sum_vector[3] = sum_vector[3] + auc
+            bug_num = classification_file[0].split("\\")[-1].split(".")[0].split("_")[-1]
             sum_vector[5] = sum_vector[5] + (tn / (tn + fp + fn + tp) * 100)
             sum_vector[7] = sum_vector[7] + (fp / (tn + fp + fn + tp) * 100)
             sum_vector[9] = sum_vector[9] + (fn / (tn + fp + fn + tp) * 100)
             sum_vector[11] = sum_vector[11] + (tp / (tn + fp + fn + tp) * 100)
             sum_vector[13] = sum_vector[13] + 1
+            # with open(res_file) as rf:
+            res_file.write(bug_num + "," + str(auc) + "," + str(acc) + "," + str(tn / (tn + fp + fn + tp) * 100)
+                           + "%," + str(fp / (tn + fp + fn + tp) * 100) + "%," + str(fn / (tn + fp + fn + tp) * 100)
+                           + "%," + str(tp / (tn + fp + fn + tp) * 100) + "%\n")
 
     return sum_vector
 
@@ -191,11 +191,26 @@ def find_prev_classifier_version(ADDITIONAL_FILES_PATH, bug_id):
 
     return [os.path.join(ADDITIONAL_FILES_PATH, f) for f in os.listdir(tmp_add_file) if f.endswith('.pkl')]
 
+def copy_traces(source_path, dest_path):
+    copy_conter = 0
+    for num in range(141):
+        new_source_path = source_path.replace("@", str(num))
+        new_dest_path = dest_path.replace("@", str(num))
+        if os.path.isdir(new_source_path) and os.path.isdir(new_dest_path):
+            file_to_move = os.path.join(new_source_path, 'traceFile.txt')
+            if os.path.exists(file_to_move):
+                shutil.copy(file_to_move, new_dest_path)
+                print(new_dest_path)
+                copy_conter = copy_conter + 1
+
+    print(str(copy_conter) + " file were copied")
 
 if __name__ == '__main__':
     # prediction_input_file = r'C:\Users\eyalhad\Desktop\runningProjects\Math_version\math_2_fix\additionalFiles\predictionInputToNN.csv'
     # partial_predicted_data(prediction_input_file)
-    calculate_prediction_results(r'C:\Users\eyalhad\Desktop\runningProjects\Math_version')
+    calculate_prediction_results(r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version')
+    # copy_traces(r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version\lang_@_fix\additionalFiles',
+    #             r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version_2\lang_@_fix\additionalFiles')
     # diagnose_summary_results(r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version\results.csv', r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version\results_sum.csv')
     # print(find_prev_classifier_version(r'C:\Users\eyalhad\Desktop\runningProjects\Math_version\math_6_fix
     # \additionalFiles', '6'))

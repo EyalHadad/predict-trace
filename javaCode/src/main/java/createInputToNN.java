@@ -34,7 +34,7 @@ public class createInputToNN {
         else {
             System.exit(1);
         }
-        int lineLength = 11;
+        int lineLength = 15;
 
         Map<String, List<String>> traceDic = new HashMap<String, List<String>>();
         List<String> testsList = new ArrayList<>();
@@ -42,6 +42,9 @@ public class createInputToNN {
 
         readTraceFile(TRACE_FILE_PATH, traceDic,testsList,funcRank);
         List<String> targetFunctionList = new ArrayList<>(funcRank.keySet());
+        List<String> notPartTraceFunctionList = new ArrayList<>(targetFunctionList.subList(1,targetFunctionList.size()/2));
+        List<String> partTraceFunctionList = new ArrayList<>(targetFunctionList.subList(targetFunctionList.size()/2,targetFunctionList.size()));
+        Map <String,String> dicToSave = new HashMap<String,String>();
 
         //////create call graph//////////////
         System.out.println("--------CREATE CALL GRAPH----------");
@@ -62,8 +65,9 @@ public class createInputToNN {
 
         File traceFolder = new File(FULL_ADDITIONAL_FILES_PATH + "\\DebuggerTests");
 
-        FileWriter trainingWriter = new FileWriter(FULL_ADDITIONAL_FILES_PATH + "\\trainingInputToNN.csv");
-        FileWriter predictWriter = new FileWriter(FULL_ADDITIONAL_FILES_PATH + "\\predictionInputToNN.csv");
+        FileWriter trainingWriter = new FileWriter(FULL_ADDITIONAL_FILES_PATH + "\\trainingInputToNNSeq.csv");
+        FileWriter predictWriter = new FileWriter(FULL_ADDITIONAL_FILES_PATH + "\\predictionInputToNNSeq.csv");
+        FileWriter partTraceWriter = new FileWriter(FULL_ADDITIONAL_FILES_PATH + "\\partTrace.txt");
         System.out.println("--------WRITING THE INPUT FILE----------");
         insertIndexToCSV(lineLength ,trainingWriter);
         insertIndexToCSV(lineLength ,predictWriter);
@@ -78,14 +82,38 @@ public class createInputToNN {
             if (i % 20 == 0) {
                 belongToTrain = true;
             }
+            List<String> testPartTrace = new ArrayList<>(traceDic.get(testFunction));
+            String partTraceString = "";
+            for(String s : testPartTrace)
+            {
+                partTraceString += s + ",";
+            }
 
-            createCSV(targetFunctionList, traceFolder, testFunction, directedGraph, trainingWriter,predictWriter, lineLength, pathCount, vertexDic,traceDic,belongToTrain);
+            dicToSave.put(testFunction,partTraceString);
+            testPartTrace.retainAll(partTraceFunctionList);
+            testPartTrace.remove(testFunction);
+            notPartTraceFunctionList.remove(testFunction);
+            createCSV(targetFunctionList, traceFolder, testFunction, directedGraph, trainingWriter,predictWriter, lineLength, pathCount, vertexDic,traceDic,belongToTrain, testPartTrace, notPartTraceFunctionList);
         }
         returnError(FULL_ADDITIONAL_FILES_PATH + "\\errorFile.txt", 0);
-
+        savePartTrace(partTraceWriter,dicToSave,partTraceFunctionList);
         trainingWriter.close();
         predictWriter.close();
+        partTraceWriter.close();
         System.out.println("--------The End Of Create Input To NN----------\n\n");
+    }
+
+    private static void savePartTrace(FileWriter partTraceWriter, Map<String,String> dicToSave, List<String> partTraceFunctionList) throws IOException {
+        partTraceWriter.write(partTraceFunctionList.toString());
+        partTraceWriter.write("\n");
+        for( String key : dicToSave.keySet() )
+        {
+            partTraceWriter.write(key + "@" + dicToSave.get(key)+"\n");
+
+        }
+
+
+
     }
 
     private static int numOfOccurrences(Map<String,List<String>> traceDic, String functionName) {
@@ -116,9 +144,11 @@ public class createInputToNN {
                     {
                         testName = line.substring(0,lastIndex) + ':' + line.substring(lastIndex+1);
                     }
-
-                    testsList.add(testName);
-                    traceDic.put(testName, new ArrayList<String>());
+                    if(!testName.equals("result"))
+                    {
+                        testsList.add(testName);
+                        traceDic.put(testName, new ArrayList<String>());
+                    }
                 }
                 else{
                     traceList = line.replace("#trace#", "");
@@ -242,7 +272,7 @@ public class createInputToNN {
 
     private static void insertIndexToCSV(int lineLength, FileWriter writer) throws IOException {
         String[] columnsArray = {"FuncName", "TestName", "y", "PathLength", "FuncInDegree", "TestOutDegree",
-        "PathExistence", "ClassCommonWords", "FuncCommonWords", "ClassSim", "FuncSim"};
+        "PathExistence", "ClassCommonWords", "FuncCommonWords", "ClassSim", "FuncSim", "partTarceInsideTrace", "partTarcePathExistence", "partTarceAvgPathLength", "partTarceCommonFuncWords"};
         for (int j = 0; j < columnsArray.length; j++) {
             writer.append(columnsArray[j]);
             if(j<columnsArray.length-1)
@@ -253,13 +283,13 @@ public class createInputToNN {
 
 
 
-    private static int createCSV(List<String> funcNameList, File testFolder, String testName, DirectedGraph<String, DefaultEdge> callGraph, FileWriter trainingWriter, FileWriter predictWriter, int lineLength, int[][] pathCount, Map<String, Integer> vertexDic, Map<String, List<String>> traceDic,boolean belongToTraining) throws IOException {
+    private static int createCSV(List<String> funcNameList, File testFolder, String testName, DirectedGraph<String, DefaultEdge> callGraph, FileWriter trainingWriter, FileWriter predictWriter, int lineLength, int[][] pathCount, Map<String, Integer> vertexDic, Map<String, List<String>> traceDic, boolean belongToTraining, List<String> testPartTrace, List<String> notPartTraceFunctionList) throws IOException {
 
         String lineArray[] = new String[lineLength];
         int wroteLine = 0;
         File[] files = testFolder.listFiles();
         int pathLength,numberOfPath;
-        for (String functionName:funcNameList)
+        for (String functionName:notPartTraceFunctionList)
         {
             lineArray[0] = functionName; //enter function name
             lineArray[1] = testName; //enter test name
@@ -291,13 +321,44 @@ public class createInputToNN {
             }
 
             lineArray[6] = String.valueOf(numberOfPath); // enter the number of difference paths
-            lineArray[7] = nameSimilarity(functionName.substring(functionName.lastIndexOf(".") + 1,functionName.indexOf(":")),testName.substring(testName.lastIndexOf(".") + 1,testName.indexOf(":"))); //class name similarity
-            lineArray[8] = nameSimilarity(functionName.split(":")[1],testName.split(":")[1]); //function name similarity
+            String tmp2="";
+            try{
+                 tmp2 = testName.substring(testName.lastIndexOf(".") + 1, testName.indexOf(":"));
+            }catch (Exception e)
+            {
+                int u = 9;
+            }
 
+            String tmp1 = functionName.substring(functionName.lastIndexOf(".") + 1,functionName.indexOf(":"));
+            lineArray[7] = String.valueOf(nameSimilarity(tmp1 , tmp2)); //class name similarity
+            lineArray[8] = String.valueOf(nameSimilarity(functionName.split(":")[1],testName.split(":")[1])); //function name similarity
             String simTest = testName.replace("Test","").replace("test","");
-
             lineArray[9] = similarity(classNameFromPath(functionName),classNameFromPath(simTest));
             lineArray[10] = similarity(funcNameFromPath(functionName),funcNameFromPath(simTest));
+
+
+            int pathExist = 0, commonFuncWords=0, numOfVertex = 0;
+            float avgPathLength = 0;
+            for (String funcInPartTrace : testPartTrace)
+            {
+                GraphPath<String, DefaultEdge> pathBetweenVertex = getGraphPath(callGraph, testName, funcInPartTrace);
+                if (pathBetweenVertex!=null){
+                    pathExist++;
+                    avgPathLength += pathBetweenVertex.getLength();
+                    numOfVertex += ExistInEdgeList(pathBetweenVertex,functionName);
+                }
+                commonFuncWords += nameSimilarity(functionName.split(":")[1],funcInPartTrace.split(":")[1]);
+
+            }
+
+            lineArray[11] = String.valueOf(numOfVertex);
+            lineArray[12] = String.valueOf(pathExist);
+            if(pathExist==0)
+                lineArray[13] = "0";
+            else
+                lineArray[13] = String.valueOf(avgPathLength/pathExist);
+
+            lineArray[14] = String.valueOf(commonFuncWords);
 
             writeLineToCSV(lineArray,predictWriter);
             if(belongToTraining)
@@ -305,6 +366,15 @@ public class createInputToNN {
             wroteLine = 1;
         }
         return wroteLine;
+    }
+
+    private static int ExistInEdgeList(GraphPath<String, DefaultEdge> pathBetweenVertex, String functionName) {
+        for(DefaultEdge edge: pathBetweenVertex.getEdgeList())
+        {
+            if(edge.toString().split(" : ")[0].replace("(","").equals(functionName))
+                return 1;
+        }
+        return 0;
     }
 
     private static String funcNameFromPath(String t) {
@@ -358,7 +428,7 @@ public class createInputToNN {
         return costs[s2.length()];
     }
 
-    private static String nameSimilarity(String function, String test) {
+    private static int nameSimilarity(String function, String test) {
 
         int count = 0;
         String[] splitedFunction = function.split("(?=\\p{Upper})");
@@ -371,7 +441,7 @@ public class createInputToNN {
             }
         }
 
-        return String.valueOf(count);
+        return count;
     }
 
     private static int isItContainTarget(String test, String function, Map<String, List<String>> traceDic) {
@@ -397,6 +467,17 @@ public class createInputToNN {
             return path.getLength();
 
         return 9999;
+    }
+
+    private static GraphPath<String, DefaultEdge> getGraphPath(DirectedGraph<String, DefaultEdge> callGraph, String s, String t) {
+        GraphPath<String, DefaultEdge> path;
+        DijkstraShortestPath<String, DefaultEdge> dijkstraShortestPath
+                = new DijkstraShortestPath<>(callGraph);
+        if(callGraph.containsVertex(s) && callGraph.containsVertex(t))
+            path = dijkstraShortestPath.getPath(s,t);
+        else
+            return null;
+        return path;
     }
 
     private static Map<String,LinkedHashSet<String>> createCallGraph(String path, Map<String, Integer> vertexDic, Map<String, Integer> functionVertexDic, Map<String, Integer> testVertexDic) throws IOException {

@@ -67,12 +67,11 @@ public class createMatrixTxt {
 
     private static void getTestsAndBugNum(String path,int fileIndex) throws IOException {
 
-        int funcIndex;
+        int funcIndex = addPartTraceDic();
         String line;
         String[] lineData = new String[4];
         try (BufferedReader br = new BufferedReader(new FileReader(path))) {
             br.readLine(); //remove first line
-            funcIndex=0;
             while ((line = br.readLine()) != null) {
                 lineData = line.split(",");
                 String testFuncNamesConcate = lineData[0] + lineData[1];
@@ -102,6 +101,44 @@ public class createMatrixTxt {
         }
         if(fileIndex==0)
             updateBugsNumbers(funcNumberDic);
+    }
+
+    private static int addPartTraceDic() throws IOException {
+        int index = 0;
+        String line,test;
+        String[] partTraceFunc;
+        String partTracePath = additional_files_path + "\\partTrace.txt";
+        try (BufferedReader br = new BufferedReader(new FileReader(partTracePath))){
+            String [] functionNames = br.readLine().split(",");
+            functionNames[0] = functionNames[0].substring(1);
+            functionNames[functionNames.length - 1] = functionNames[functionNames.length - 1].substring(0,functionNames[functionNames.length - 1].length()-1);
+            for( int i=0;i<functionNames.length;i++)
+            {
+                functionNames[i] = functionNames[i].replace(" ","");
+                funcNumberDic.put(functionNames[i],index);
+                index++;
+            }
+            while((line = br.readLine()) != null)
+            {
+                if(line.split("@").length == 1)
+                    continue;
+                test = line.split("@")[0];
+                partTraceFunc = line.split("@")[1].split(",");
+                traceDic.put(test, new ArrayList<String>());
+                for(String fName : functionNames)
+                {
+                    boolean inTrace=false;
+                    for (String traceFunc : partTraceFunc)
+                        if(traceFunc.equals(fName))
+                            inTrace = true;
+                    if(inTrace)
+                        traceDic.get(test).add(fName+"=1=1");
+                    else
+                        traceDic.get(test).add(fName+"=0=0");
+                }
+            }
+        }
+        return index;
     }
 
     private static void updateBugsNumbers(Map<String,Integer> funcDic) {

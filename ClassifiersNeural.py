@@ -18,13 +18,13 @@ from additional_functions import find_prev_classifier_version
 
 def get_and_split_data_initial_data(input_file):
     start_time = time.time()
-    dataset = pd.read_csv(input_file, usecols=list(range(2, 11)))
+    dataset = pd.read_csv(input_file, usecols=list(range(2, 15)))
     dataset = dataset.dropna()
     elapsed_time = time.time() - start_time
     print("Total reading pandas time:" + str(elapsed_time))
 
     # ********************create classifier******************
-    x = dataset.loc[:, 'PathLength':'FuncSim']
+    x = dataset.loc[:, 'PathLength':'partTarceCommonFuncWords']
     y = dataset.loc[:, 'y']
     if len([ind for ind in dataset.index[dataset['PathExistence'] == 1]]) < 100:
         raise Exception('Not enough paths')
@@ -108,7 +108,7 @@ def partial_predicted_data(input_file, classifier_list_to_use, prediction_result
     for line in f:
         if line.split(",")[1] != old_test_name and end_of_test == 0:
             dataset = pd.read_csv(io.StringIO(u'\n'.join(data_to_predict)), delimiter=",")
-            x = dataset.loc[:, 'PathLength':'FuncSim']
+            x = dataset.loc[:, 'PathLength':'partTarceCommonFuncWords']
             y_prediction_probability_list = use_classifier(classifier_list_to_use, x)
             save_prediction_results(dataset['TestName'], dataset['FuncName'], dataset['y'],
                                     y_prediction_probability_list, prediction_result_file)
