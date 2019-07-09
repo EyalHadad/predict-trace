@@ -2,7 +2,6 @@
 /.idea
 /javaCode/target
 /javaCode/.idea/workspace.xml
-/additional_files/java-callgraph
 /ClassifiersNeural.pyc
 /additional_functions.pyc
 /filediff.pyc

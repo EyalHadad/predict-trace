@@ -1,0 +1,4 @@
+java -jar "C:\\Users\\eyalhad\\Desktop\\java-callgraph\\target\\javacg-0.1-SNAPSHOT-static.jar" "C:\\Users\\eyalhad\\Desktop\\Math_version\\math_60_fix\\defects4j-math\\target\\commons-math-3.1-SNAPSHOT.jar" > "C:\\Users\\eyalhad\\Desktop\\Math_version\\math_60_fix\\additionalFiles\\callGraph.txt"
+
+ 
+'C:\\Users\\eyalhad\\Desktop\\Math_version\\math_60_fix\\defects4j-math\\target\\commons-math-3.1-SNAPSHOT.jar'
