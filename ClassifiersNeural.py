@@ -18,7 +18,7 @@ from additional_functions import find_prev_classifier_version
 
 def get_and_split_data_initial_data(input_file):
     start_time = time.time()
-    dataset = pd.read_csv(input_file, usecols=list(range(2, 15)))
+    dataset = pd.read_csv(input_file, usecols=list(range(2, 17)))
     dataset = dataset.dropna()
     elapsed_time = time.time() - start_time
     print("Total reading pandas time:" + str(elapsed_time))
@@ -39,13 +39,24 @@ def split_data_and_get_best_classifier(x, y, classifier_perform_file):
     clf_list = []
     if os.path.isfile(classifier_perform_file):
         os.remove(classifier_perform_file)
-    for percentage, test_size_split in reversed(tmp_loop_list):
-        x_train, tmp_x_test, y_train, tmp_y_test = train_test_split(x, y, test_size=test_size_split)
-        res.append((percentage, len(y_train), y_train.values.sum()))
+    percentage = "0.1"
+    test_size_split = 0.1
+    x_train, tmp_x_test, y_train, tmp_y_test = train_test_split(x, y, test_size=test_size_split)
+    res.append((percentage, len(y_train), y_train.values.sum()))
 
-        tmp_clf = train_classifier(x_train, y_train, tmp_x_test, tmp_y_test, percentage,
-                                    classifier_perform_file)
-        clf_list.append((tmp_clf, test_size_split))
+    tmp_clf = train_classifier(x_train, y_train, tmp_x_test, tmp_y_test, percentage,
+                               classifier_perform_file)
+    clf_list.append((tmp_clf, test_size_split))
+    #
+    # for ind in range(len(x.columns)):
+    #     new_x = x
+    #     new_x = new_x.drop(new_x.columns[ind], axis=1)
+    #     x_train, tmp_x_test, y_train, tmp_y_test = train_test_split(new_x, y, test_size=test_size_split)
+    #     res.append((percentage, len(y_train), y_train.values.sum()))
+    #
+    #     tmp_clf = train_classifier(x_train, y_train, tmp_x_test, tmp_y_test, percentage,
+    #                                 classifier_perform_file)
+    #     clf_list.append((tmp_clf, test_size_split))
     return clf_list
 
 
@@ -166,12 +177,12 @@ def classify_code(bugID, training_input_file, prediction_input_file, classifier_
     print("Total training time: " + str(elapsed))
 
     # open the classifier of previous
-    classifier_list_to_use = find_prev_classifier_version(ADDITIONAL_FILES_PATH, bugID)
-    additional_path = classifier_path_to_save[0:classifier_path_to_save.rindex("\\")]
-    old_score_to_remove = [os.path.join(additional_path, x) for x in os.listdir(additional_path) if "score" in x and ".csv" in x]
-    for clf_to_delete in old_score_to_remove:
-        os.remove(clf_to_delete)
-    partial_predicted_data(prediction_input_file, classifier_list_to_use, prediction_result_file)
+    # classifier_list_to_use = find_prev_classifier_version(ADDITIONAL_FILES_PATH, bugID)
+    # additional_path = classifier_path_to_save[0:classifier_path_to_save.rindex("\\")]
+    # old_score_to_remove = [os.path.join(additional_path, x) for x in os.listdir(additional_path) if "score" in x and ".csv" in x]
+    # for clf_to_delete in old_score_to_remove:
+    #     os.remove(clf_to_delete)
+    # partial_predicted_data(prediction_input_file, classifier_list_to_use, prediction_result_file)
 
 
 if __name__ == '__main__':

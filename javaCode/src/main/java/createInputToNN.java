@@ -4,6 +4,8 @@ import org.jgrapht.GraphPath;
 import org.jgrapht.alg.shortestpath.DijkstraShortestPath;
 import org.jgrapht.graph.DefaultDirectedGraph;
 import org.jgrapht.graph.DefaultEdge;
+import org.jgrapht.graph.EdgeReversedGraph;
+
 import java.io.*;
 import java.util.*;
 
@@ -19,6 +21,7 @@ public class createInputToNN {
         String LOG_FILE= null;
         String[] bugFuncNames = new String[10];
         String bugNum = "-1";
+        double sum_pre = 0;
 
         if(args.length>1)
         {
@@ -34,7 +37,7 @@ public class createInputToNN {
         else {
             System.exit(1);
         }
-        int lineLength = 15;
+        int lineLength = 17;
 
         Map<String, List<String>> traceDic = new HashMap<String, List<String>>();
         List<String> testsList = new ArrayList<>();
@@ -79,7 +82,7 @@ public class createInputToNN {
             }
             String testFunction = testsList.get(i);
             belongToTrain = false;
-            if (i % 20 == 0) {
+            if(i % 20 == 0) {
                 belongToTrain = true;
             }
             List<String> testPartTrace = new ArrayList<>(traceDic.get(testFunction));
@@ -93,7 +96,7 @@ public class createInputToNN {
             testPartTrace.retainAll(partTraceFunctionList);
             testPartTrace.remove(testFunction);
             notPartTraceFunctionList.remove(testFunction);
-            createCSV(targetFunctionList, traceFolder, testFunction, directedGraph, trainingWriter,predictWriter, lineLength, pathCount, vertexDic,traceDic,belongToTrain, testPartTrace, notPartTraceFunctionList);
+            createCSV(targetFunctionList, traceFolder, testFunction, directedGraph, trainingWriter,predictWriter, lineLength, pathCount, vertexDic,traceDic,belongToTrain, testPartTrace, notPartTraceFunctionList, callGraph);
         }
         returnError(FULL_ADDITIONAL_FILES_PATH + "\\errorFile.txt", 0);
         savePartTrace(partTraceWriter,dicToSave,partTraceFunctionList);
@@ -111,9 +114,6 @@ public class createInputToNN {
             partTraceWriter.write(key + "@" + dicToSave.get(key)+"\n");
 
         }
-
-
-
     }
 
     private static int numOfOccurrences(Map<String,List<String>> traceDic, String functionName) {
@@ -272,7 +272,7 @@ public class createInputToNN {
 
     private static void insertIndexToCSV(int lineLength, FileWriter writer) throws IOException {
         String[] columnsArray = {"FuncName", "TestName", "y", "PathLength", "FuncInDegree", "TestOutDegree",
-        "PathExistence", "ClassCommonWords", "FuncCommonWords", "ClassSim", "FuncSim", "partTarceInsideTrace", "partTarcePathExistence", "partTarceAvgPathLength", "partTarceCommonFuncWords"};
+        "PathExistence", "ClassCommonWords", "FuncCommonWords", "ClassSim", "FuncSim", "TargetInTheMiddle", "partTarcePathsToTarget", "partTarcePathsToTargetAvgLength", "numOfVertexInMainPath", "pathToPtWithoutTarget",  "partTarceCommonFuncWords"};
         for (int j = 0; j < columnsArray.length; j++) {
             writer.append(columnsArray[j]);
             if(j<columnsArray.length-1)
@@ -283,8 +283,7 @@ public class createInputToNN {
 
 
 
-    private static int createCSV(List<String> funcNameList, File testFolder, String testName, DirectedGraph<String, DefaultEdge> callGraph, FileWriter trainingWriter, FileWriter predictWriter, int lineLength, int[][] pathCount, Map<String, Integer> vertexDic, Map<String, List<String>> traceDic, boolean belongToTraining, List<String> testPartTrace, List<String> notPartTraceFunctionList) throws IOException {
-
+    private static int createCSV(List<String> funcNameList, File testFolder, String testName, DirectedGraph<String, DefaultEdge> callGraph, FileWriter trainingWriter, FileWriter predictWriter, int lineLength, int[][] pathCount, Map<String, Integer> vertexDic, Map<String, List<String>> traceDic, boolean belongToTraining, List<String> testPartTrace, List<String> notPartTraceFunctionList, Map<String, LinkedHashSet<String>> basicCallGraph) throws IOException {
         String lineArray[] = new String[lineLength];
         int wroteLine = 0;
         File[] files = testFolder.listFiles();
@@ -295,9 +294,18 @@ public class createInputToNN {
             lineArray[1] = testName; //enter test name
             assert files != null;
             lineArray[2] = String.valueOf(isItContainTarget(testName,functionName,traceDic)); // 1/0 if the function is in the trace
-            pathLength = getPathLength(callGraph,testName,functionName);
-            lineArray[3] = String.valueOf(pathLength); // enter path length
-
+//            pathLength = getPathLength(callGraph,testName,functionName);
+            GraphPath<String, DefaultEdge> mainPath = getGraphPath(callGraph, testName, functionName);
+            if(mainPath != null)
+            {
+                lineArray[3] = String.valueOf(mainPath.getLength()); // enter shortest path length
+                lineArray[6] = "1";
+            }
+            else
+            {
+                lineArray[3] = "999";
+                lineArray[6] = "0";
+            }
 
             if(callGraph.containsVertex(functionName))
                 lineArray[4] = String.valueOf(callGraph.inDegreeOf(functionName)); //enter the function degree in the graph
@@ -308,19 +316,7 @@ public class createInputToNN {
                 lineArray[5] = String.valueOf(callGraph.outDegreeOf(testName)); //enter the test out degree in the graph
             else
                 lineArray[5] = String.valueOf(0);
-            numberOfPath = 0;
-            if(lineArray[3].equals("9999"))
-            {
-                numberOfPath = 0;
-            }
-            else if(vertexDic.get(functionName) != null && vertexDic.get(testName) != null)
-            {
-                numberOfPath = 1;
-//                numberOfPath = getNumOfPath(callGraph,functionName,testName,2);
-//                numberOfPath = pathCount[vertexDic.get(functionName)][vertexDic.get(testName)];
-            }
 
-            lineArray[6] = String.valueOf(numberOfPath); // enter the number of difference paths
             String tmp2="";
             try{
                  tmp2 = testName.substring(testName.lastIndexOf(".") + 1, testName.indexOf(":"));
@@ -336,29 +332,48 @@ public class createInputToNN {
             lineArray[9] = similarity(classNameFromPath(functionName),classNameFromPath(simTest));
             lineArray[10] = similarity(funcNameFromPath(functionName),funcNameFromPath(simTest));
 
-
-            int pathExist = 0, commonFuncWords=0, numOfVertex = 0;
+            int pathExist = 0, commonFuncWords=0, numOfPathToPtIncludeTarget = 0, numOfVertexInMainPath = 0;
             float avgPathLength = 0;
             for (String funcInPartTrace : testPartTrace)
             {
+
                 GraphPath<String, DefaultEdge> pathBetweenVertex = getGraphPath(callGraph, testName, funcInPartTrace);
                 if (pathBetweenVertex!=null){
                     pathExist++;
                     avgPathLength += pathBetweenVertex.getLength();
-                    numOfVertex += ExistInEdgeList(pathBetweenVertex,functionName);
+                    numOfPathToPtIncludeTarget += ExistInEdgeList(pathBetweenVertex,functionName);
                 }
-                commonFuncWords += nameSimilarity(functionName.split(":")[1],funcInPartTrace.split(":")[1]);
+                if(mainPath!=null)
+                    numOfVertexInMainPath += ExistInEdgeList(mainPath,funcInPartTrace);
 
+                commonFuncWords += nameSimilarity(functionName.split(":")[1],funcInPartTrace.split(":")[1]);
             }
 
-            lineArray[11] = String.valueOf(numOfVertex);
-            lineArray[12] = String.valueOf(pathExist);
+            lineArray[11] = String.valueOf(numOfPathToPtIncludeTarget); //how many PT vertex had target function in their shortest path between test to the vertex
+            lineArray[12] = String.valueOf(pathExist); //how many PT vertex have path from test (actually it is PT length)
             if(pathExist==0)
                 lineArray[13] = "0";
             else
-                lineArray[13] = String.valueOf(avgPathLength/pathExist);
+                lineArray[13] = String.valueOf(avgPathLength/pathExist); // AVG shortest path length between test to PT
 
-            lineArray[14] = String.valueOf(commonFuncWords);
+
+            lineArray[14] = String.valueOf(numOfVertexInMainPath); // number of vertex from part trace that in the main path
+
+            Set<DefaultEdge> edgeNames = removeVertex(callGraph,functionName);
+            callGraph.removeVertex(functionName);
+            int tragetIsNecessary = 0;
+            for (String funcInPartTrace : testPartTrace)
+            {
+                GraphPath<String, DefaultEdge> smallPathBetweenVertex = getGraphPath(callGraph, testName, funcInPartTrace);
+                if(smallPathBetweenVertex == null)
+                    tragetIsNecessary++;
+            }
+
+            returnVertex(callGraph,functionName,edgeNames);
+
+            lineArray[15] = String.valueOf(tragetIsNecessary); //how many PT vertex don't have path from test without target function
+
+            lineArray[16] = String.valueOf(commonFuncWords); //common words between all part trace vertex to target function
 
             writeLineToCSV(lineArray,predictWriter);
             if(belongToTraining)
@@ -367,6 +382,25 @@ public class createInputToNN {
         }
         return wroteLine;
     }
+
+    private static void returnVertex(DirectedGraph<String, DefaultEdge> callGraph, String functionName, Set<DefaultEdge> edgeNames) {
+        callGraph.addVertex(functionName);
+        if(edgeNames!=null)
+        {
+            for (DefaultEdge e : edgeNames) {
+
+                String edgeValue = e.toString().replace("(", "").replace(")", "");
+                callGraph.addEdge(edgeValue.split(" : ")[0], edgeValue.split(" : ")[1]);
+            }
+        }
+    }
+
+    private static Set<DefaultEdge> removeVertex(DirectedGraph<String, DefaultEdge> callGraph, String functionName) {
+        if (!callGraph.containsVertex(functionName))
+            return null;
+        return callGraph.edgesOf(functionName);
+    }
+
 
     private static int ExistInEdgeList(GraphPath<String, DefaultEdge> pathBetweenVertex, String functionName) {
         for(DefaultEdge edge: pathBetweenVertex.getEdgeList())
