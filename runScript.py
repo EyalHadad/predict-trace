@@ -9,6 +9,7 @@ import git
 import os
 import time
 import timeit
+
 # # TODO project properties
 
 # ROOT_DIR = r'C:\Users\eyalhad\Desktop\runningProjects\Math_version'
@@ -109,7 +110,7 @@ def call_graph_creation(PROJECT_VERSION):
 
 def tracer_and_parse(DEBUGGER_TESTS_PATH, PROJECT_VERSION, bug_id, bug_version, fix_version, git_repo_local_path,
                      trace_file):
-    # todo run Amir tracer
+    #todo run Amir tracer
     print("-----Bug Num: " + str(bug_id) + "-----")
     print("-----Start Tracer-----")
     # /////////////////////
@@ -121,6 +122,17 @@ def tracer_and_parse(DEBUGGER_TESTS_PATH, PROJECT_VERSION, bug_id, bug_version, 
     writeTraceFile(traces, trace_file)
     total_t = timeit.default_timer() - start_t
     writeToLogTime("Tracer: " + str(total_t / 60) + "\r\n")
+
+
+
+def calc_mvn_tests_time(PROJECT_VERSION):
+    repo = Repo.Repo(PROJECT_VERSION + CLONE_DIR)
+    out_1 = repo.observe_tests()
+    new_res_file = os.path.join(PROJECT_VERSION, "res_time_mvnpy.csv")
+    with open(new_res_file, "w+") as f:
+        for key, value in out_1.items():
+            f.write(value.full_name + "," + str(value.time * 1000) + "\r")
+    i = 5
 
 
 def mvn_dir_commands(PROJECT_VERSION, fix_version, git_repo_path):
@@ -265,7 +277,8 @@ def myFunc(bug_id, fix_version, bug_version, git_repo_path):
     # if len(func_name_list) == 0:
     #     raise NameError('No buggy functions')
     # todo tracer_parsing
-    # tracer_and_parse(DEBUGGER_TESTS_PATH, PROJECT_VERSION, bug_id, bug_version, fix_version,git_repo_local_path, trace_file)
+    tracer_and_parse(DEBUGGER_TESTS_PATH, PROJECT_VERSION, bug_id, bug_version, fix_version,git_repo_local_path, trace_file)
+    # calc_mvn_tests_time(PROJECT_VERSION)
     # todo input_to_NN
     # create_input_NN(ADDITIONAL_FILES_PATH, bug_id, error_file, func_name_list)
 
@@ -292,7 +305,7 @@ def myFunc(bug_id, fix_version, bug_version, git_repo_path):
     #     writeToLog(bug_id, func_name_list)
     #     return 7
     # todo run_ diagnoser
-    run_diagnoser(ADDITIONAL_FILES_PATH, bug_id)
+    # run_diagnoser(ADDITIONAL_FILES_PATH, bug_id)
 
     total_elapsed = timeit.default_timer() - total_start_time
     writeToLogTime("Total Bug" + str(bug_id) + " time: " + str(total_elapsed / 60) + "\r\n")
@@ -323,7 +336,7 @@ def read_commit_file(commit_db, GIT_REPO_PATH, start_bug_num):
             fix_version = split_content[2]
         if int(bug_num) not in black_list:
             if int(bug_num) >= int(start_bug_num):
-                if int(bug_num) > 0:
+                if int(bug_num) == 4:
                     try:
                         myFunc(bug_num, fix_version, bug_version, GIT_REPO_PATH)
                     except Exception as e:
@@ -337,5 +350,5 @@ def read_commit_file(commit_db, GIT_REPO_PATH, start_bug_num):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) == 4:
+    if len(sys.argv) == 6:
         read_commit_file(sys.argv[1], sys.argv[2], sys.argv[3])

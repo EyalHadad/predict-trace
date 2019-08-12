@@ -5,6 +5,8 @@ import org.jgrapht.alg.shortestpath.DijkstraShortestPath;
 import org.jgrapht.graph.DefaultDirectedGraph;
 import org.jgrapht.graph.DefaultEdge;
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 
 
@@ -67,6 +69,9 @@ public class createInputToNN {
         System.out.println("--------WRITING THE INPUT FILE----------");
         insertIndexToCSV(lineLength ,trainingWriter);
         insertIndexToCSV(lineLength ,predictWriter);
+        long [] timeArray = new long[9];
+        Files.delete(Paths.get(FULL_ADDITIONAL_FILES_PATH + "\\calcTimes.csv"));
+
         boolean belongToTrain;
         for (int i = 0; i < testsList.size(); i++) {
             if (i % 1000 == 0) {
@@ -79,13 +84,30 @@ public class createInputToNN {
                 belongToTrain = true;
             }
 
-            createCSV(targetFunctionList, traceFolder, testFunction, directedGraph, trainingWriter,predictWriter, lineLength, pathCount, vertexDic,traceDic,belongToTrain);
+            createCSV(targetFunctionList, traceFolder, testFunction, directedGraph, trainingWriter,predictWriter, lineLength, pathCount, vertexDic,traceDic,belongToTrain,timeArray);
+//            instertTimeLine(FULL_ADDITIONAL_FILES_PATH, timeArray, testFunction);
         }
         returnError(FULL_ADDITIONAL_FILES_PATH + "\\errorFile.txt", 0);
 
         trainingWriter.close();
         predictWriter.close();
         System.out.println("--------The End Of Create Input To NN----------\n\n");
+    }
+
+    private static void instertTimeLine(String FULL_ADDITIONAL_FILES_PATH, long[] timeArray, String testFunction) throws IOException {
+        long sum=0;
+        StringBuilder timeLine = new StringBuilder();
+        timeLine.append(testFunction).append(",");
+        for(int timeCounter = 1; timeCounter<timeArray.length;timeCounter++)
+        {
+            timeLine.append(timeArray[timeCounter]).append(",");
+            sum+=timeArray[timeCounter];
+            timeArray[timeCounter] = 0;
+        }
+        timeLine.append(sum);
+        FileWriter fw = new FileWriter(FULL_ADDITIONAL_FILES_PATH + "\\calcTimes.csv",true); //the true will append the new data
+        fw.write(timeLine + "\r\n");//appends the string to the file
+        fw.close();
     }
 
     private static int numOfOccurrences(Map<String,List<String>> traceDic, String functionName) {
@@ -253,10 +275,11 @@ public class createInputToNN {
 
 
 
-    private static int createCSV(List<String> funcNameList, File testFolder, String testName, DirectedGraph<String, DefaultEdge> callGraph, FileWriter trainingWriter, FileWriter predictWriter, int lineLength, int[][] pathCount, Map<String, Integer> vertexDic, Map<String, List<String>> traceDic,boolean belongToTraining) throws IOException {
+    private static long[] createCSV(List<String> funcNameList, File testFolder, String testName, DirectedGraph<String, DefaultEdge> callGraph, FileWriter trainingWriter, FileWriter predictWriter, int lineLength, int[][] pathCount, Map<String, Integer> vertexDic, Map<String, List<String>> traceDic, boolean belongToTraining, long[] timeArray) throws IOException {
 
         String lineArray[] = new String[lineLength];
         int wroteLine = 0;
+        long firstTime;
         File[] files = testFolder.listFiles();
         int pathLength,numberOfPath;
         for (String functionName:funcNameList)
@@ -264,20 +287,25 @@ public class createInputToNN {
             lineArray[0] = functionName; //enter function name
             lineArray[1] = testName; //enter test name
             assert files != null;
+            firstTime = System.currentTimeMillis();
             lineArray[2] = String.valueOf(isItContainTarget(testName,functionName,traceDic)); // 1/0 if the function is in the trace
+            timeArray[0] = timeArray[0] + (System.currentTimeMillis() - firstTime);
+            firstTime = System.currentTimeMillis();
             pathLength = getPathLength(callGraph,testName,functionName);
             lineArray[3] = String.valueOf(pathLength); // enter path length
-
-
+            timeArray[1] = timeArray[1] + (System.currentTimeMillis() - firstTime);
+            firstTime = System.currentTimeMillis();
             if(callGraph.containsVertex(functionName))
                 lineArray[4] = String.valueOf(callGraph.inDegreeOf(functionName)); //enter the function degree in the graph
             else
                 lineArray[4] = String.valueOf(0);
-
+            timeArray[2] = timeArray[2] + (System.currentTimeMillis() - firstTime);
+            firstTime = System.currentTimeMillis();
             if(callGraph.containsVertex(testName))
                 lineArray[5] = String.valueOf(callGraph.outDegreeOf(testName)); //enter the test out degree in the graph
             else
                 lineArray[5] = String.valueOf(0);
+            timeArray[3] = timeArray[3] + (System.currentTimeMillis() - firstTime);
             numberOfPath = 0;
             if(lineArray[3].equals("9999"))
             {
@@ -289,22 +317,29 @@ public class createInputToNN {
 //                numberOfPath = getNumOfPath(callGraph,functionName,testName,2);
 //                numberOfPath = pathCount[vertexDic.get(functionName)][vertexDic.get(testName)];
             }
-
+            firstTime = System.currentTimeMillis();
             lineArray[6] = String.valueOf(numberOfPath); // enter the number of difference paths
+            timeArray[4] = timeArray[4] + (System.currentTimeMillis() - firstTime);
+            firstTime = System.currentTimeMillis();
             lineArray[7] = nameSimilarity(functionName.substring(functionName.lastIndexOf(".") + 1,functionName.indexOf(":")),testName.substring(testName.lastIndexOf(".") + 1,testName.indexOf(":"))); //class name similarity
+            timeArray[5] = timeArray[5] + (System.currentTimeMillis() - firstTime);
+            firstTime = System.currentTimeMillis();
             lineArray[8] = nameSimilarity(functionName.split(":")[1],testName.split(":")[1]); //function name similarity
+            timeArray[6] = timeArray[6] + (System.currentTimeMillis() - firstTime);
 
             String simTest = testName.replace("Test","").replace("test","");
-
+            firstTime = System.currentTimeMillis();
             lineArray[9] = similarity(classNameFromPath(functionName),classNameFromPath(simTest));
+            timeArray[7] = timeArray[7] + (System.currentTimeMillis() - firstTime);
+            firstTime = System.currentTimeMillis();
             lineArray[10] = similarity(funcNameFromPath(functionName),funcNameFromPath(simTest));
-
+            timeArray[8] = timeArray[8] + (System.currentTimeMillis() - firstTime);
             writeLineToCSV(lineArray,predictWriter);
             if(belongToTraining)
                 writeLineToCSV(lineArray,trainingWriter);
             wroteLine = 1;
         }
-        return wroteLine;
+        return timeArray;
     }
 
     private static String funcNameFromPath(String t) {

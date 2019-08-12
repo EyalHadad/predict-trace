@@ -7,16 +7,15 @@ import time
 import pandas as pd
 
 
-def writeTraceFile(traces_dicionary, TRACE_FILE):
+def writeTraceFile(traces, TRACE_FILE):
     if os.path.exists(TRACE_FILE):
         trace_file = open(TRACE_FILE, 'a+')
     else:
         trace_file = open(TRACE_FILE, 'w+')
 
-    all_tests = traces_dicionary.keys()
-    for test in all_tests:
-        trace_file.write("#test#" + test + "\r\n")
-        test_trace = traces_dicionary.get(test).trace
+    for test in traces:
+        trace_file.write("#test#" + test.test_name + "\r\n")
+        test_trace = test.trace
         trace_file.write("#trace#")
         for func in test_trace:
             trace_file.write(func + "@")
