@@ -13,6 +13,7 @@ from sklearn.metrics import accuracy_score  # works
 from sklearn.metrics import roc_auc_score
 import cPickle
 from sklearn.neural_network import MLPClassifier
+import xgboost as xgb
 from additional_functions import find_prev_classifier_version
 
 
@@ -33,52 +34,41 @@ def get_and_split_data_initial_data(input_file):
 
 
 def split_data_and_get_best_classifier(x, y, classifier_perform_file):
-    loop_list = [("0.4", 0.4), ("0.6", 0.6), ("0.8", 0.8), ("0.9", 0.9)]
-    tmp_loop_list = [("0.5", 0.5)]
-    res = []
-    clf_list = []
     if os.path.isfile(classifier_perform_file):
         os.remove(classifier_perform_file)
-    for percentage, test_size_split in reversed(tmp_loop_list):
-        x_train, tmp_x_test, y_train, tmp_y_test = train_test_split(x, y, test_size=test_size_split)
-        res.append((percentage, len(y_train), y_train.values.sum()))
-
-        tmp_clf = train_classifier(x_train, y_train, tmp_x_test, tmp_y_test, percentage,
-                                    classifier_perform_file)
-        clf_list.append((tmp_clf, test_size_split))
-    return clf_list
+    x_train, tmp_x_test, y_train, tmp_y_test = train_test_split(x, y, test_size=0.5)
+    tmp_clf = train_classifier(x_train, y_train, tmp_x_test, tmp_y_test, classifier_perform_file)
+    return list(tmp_clf)
 
 
-def train_classifier(x_train, y_train, x_test, y_test, prec, classifier_perform_file):
+def train_classifier(x_train, y_train, x_test, y_test, classifier_perform_file):
     clf_slim = MLPClassifier(solver='adam', alpha=1e-5, activation='relu', max_iter=3000,
                              hidden_layer_sizes=30, random_state=13)
-
-    # clf_deep = MLPClassifier(solver='adam', alpha=1e-5, activation='relu', max_iter=3000,
-    #                          hidden_layer_sizes=(30, 30, 30, 30, 30), random_state=13)
+    clf_deep = MLPClassifier(solver='adam', alpha=1e-5, activation='relu', max_iter=3000,
+                             hidden_layer_sizes=(30, 30, 30, 30, 30), random_state=13)
+    xg_cls = xgb.XGBClassifier(objective='reg:linear', colsample_bytree=0.3, learning_rate=0.1,
+                               max_depth=5, alpha=10, n_estimators=10)
 
     clf_slim.fit(x_train, y_train)
-    # clf_deep.fit(x_train, y_train)
-    save_classifier_results(clf_slim, x_test, y_test, classifier_perform_file, prec, "Slim classifier",
-                                str(y_train.values.sum()))
-    # save_classifier_results(clf_deep, x_test, y_test, classifier_perform_file, prec, "Deep classifier",
-    #                         str(y_train.values.sum()))
+    xg_cls.fit(x_train, y_train)
+    clf_deep.fit(x_train, y_train)
+
+    save_classifier_results(clf_slim, x_test, y_test, classifier_perform_file, "NN")
+    save_classifier_results(clf_deep, x_test, y_test, classifier_perform_file, "DNN")
+    save_classifier_results(xg_cls, x_test, y_test, classifier_perform_file, "XGBoost")
     return clf_slim
 
 
-def save_classifier_results(classifier, x_test, y_test, classifier_perform_file, percentage, classifier_type_name,
-                            num_of_positive_in_train):
+def save_classifier_results(classifier, x_test, y_test, classifier_perform_file, classifier_type_name):
     y_pred = pd.DataFrame(classifier.predict(x_test))
     y_pred_proba = pd.DataFrame(np.delete(classifier.predict_proba(x_test), 0, 1))
-
     accuracy = accuracy_score(y_test, y_pred)
     auc_score = roc_auc_score(y_test, y_pred)
     cm = confusion_matrix(y_test, y_pred)
-    f = open(classifier_perform_file, 'a+')
-    f.write("\r\n\r\n" + "----------------" + "\r\n\r\n" + "Test percentage: " + percentage + "\r\n" +
-            classifier_type_name + "\r\n" + "accuracy:" + str(accuracy) + "\r\n" + "auc_score:" + str(auc_score) +
-            "\r\n" + "confusion_matrix:" + str(cm) + "\r\n" + "Num of positive: " + num_of_positive_in_train + "\r\n")
-    f.close()
-
+    with open(classifier_perform_file, 'a+') as f:
+        f.write(classifier_type_name + "," + "acc:" + str(accuracy) + "," + "auc:" + str(auc_score) + ","
+                + "Tn:" + str(cm[0][0]) + "," + "Fn:" + str(cm[1][0]) + "," + "Tp:" + str(cm[1][1]) + "," + "Fp:" + str(
+            cm[0][1]) + "," + "Total:" + str(cm[0][0]+cm[1][0]+cm[0][1]+cm[1][1]) + "\n")
     return y_pred_proba
 
 
@@ -140,7 +130,8 @@ def save_prediction_results(test_name, func_name, y, y_prediction_probability_li
         concat_data = pd.concat([test_name, func_name, y_pred, y], axis=1)
         largest_predicted_values = concat_data.nlargest(40, 'y_pred')
         function_in_the_trace = concat_data.loc[concat_data['y'] == 1]
-        result_to_insert = pd.concat([largest_predicted_values, function_in_the_trace]).drop_duplicates().reset_index(drop=True)
+        result_to_insert = pd.concat([largest_predicted_values, function_in_the_trace]).drop_duplicates().reset_index(
+            drop=True)
         results_list.append((result_to_insert, name))
     save_results_and_print_score(prediction_result_file, results_list)
 
@@ -165,13 +156,13 @@ def classify_code(bugID, training_input_file, prediction_input_file, classifier_
     elapsed = time.time() - start
     print("Total training time: " + str(elapsed))
 
-    # open the classifier of previous
-    classifier_list_to_use = find_prev_classifier_version(ADDITIONAL_FILES_PATH, bugID)
-    additional_path = classifier_path_to_save[0:classifier_path_to_save.rindex("\\")]
-    old_score_to_remove = [os.path.join(additional_path, x) for x in os.listdir(additional_path) if "score" in x and ".csv" in x]
-    for clf_to_delete in old_score_to_remove:
-        os.remove(clf_to_delete)
-    partial_predicted_data(prediction_input_file, classifier_list_to_use, prediction_result_file)
+    # # open the classifier of previous
+    # classifier_list_to_use = find_prev_classifier_version(ADDITIONAL_FILES_PATH, bugID)
+    # additional_path = classifier_path_to_save[0:classifier_path_to_save.rindex("\\")]
+    # old_score_to_remove = [os.path.join(additional_path, x) for x in os.listdir(additional_path) if "score" in x and ".csv" in x]
+    # for clf_to_delete in old_score_to_remove:
+    #     os.remove(clf_to_delete)
+    # partial_predicted_data(prediction_input_file, classifier_list_to_use, prediction_result_file)
 
 
 if __name__ == '__main__':

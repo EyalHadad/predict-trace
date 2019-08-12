@@ -96,87 +96,62 @@ def diagnose_summary_results(RESULTS_FILE, SUM_RESULTS_FILE):
         f.write(str(random_recall))
 
 
-def calculate_prediction_results(PATH):
+def insert_values_to_dict(dict_results, value_list):
+    for value in value_list:
+        key_value_pair = value.split(":")
+        dict_results[key_value_pair[0]] += float(key_value_pair[1])
+    dict_results['Version_count'] += float(1)
+
+
+def get_string_from_dict(dict_result):
+    auc = dict_result['auc']/dict_result['Version_count']
+    acc = dict_result['acc']/dict_result['Version_count']
+    tn = (dict_result['Tn']/dict_result['Total'])*100
+    fn = (dict_result['Fn']/dict_result['Total'])*100
+    tp = (dict_result['Tp']/dict_result['Total'])*100
+    fp = (dict_result['Fp']/dict_result['Total'])*100
+    return str(auc) + "," + str(acc) + "," + str(tn) + "%," + str(fp) + "%," + str(fn) + "%," + str(tp)+"%\n"
+
+
+def calculate_prediction_results(version_path):
+    learning_results_file_list = get_learning_results_files(version_path)
+    nn_dict_results = {'acc':0,'auc':0,'Tn':0,'Fn':0,'Tp':0,'Fp':0,'Total':0,'Version_count':0}
+    dnn_dict_results= {'acc':0,'auc':0,'Tn':0,'Fn':0,'Tp':0,'Fp':0,'Total':0,'Version_count':0}
+    xgb_dict_results= {'acc':0,'auc':0,'Tn':0,'Fn':0,'Tp':0,'Fp':0,'Total':0,'Version_count':0}
+    # result_summary = old_sum_results(result)
+    for res_file in learning_results_file_list:
+        with open(res_file, "r") as f:
+            file_content = f.readlines()
+            for line in file_content:
+                line = line.rstrip()
+                algo_res_list = line.split(",")
+                if algo_res_list[0] == 'NN':
+                    insert_values_to_dict(nn_dict_results, algo_res_list[1:])
+                elif algo_res_list[0] == 'DNN':
+                    insert_values_to_dict(dnn_dict_results, algo_res_list[1:])
+                else:
+                    insert_values_to_dict(xgb_dict_results, algo_res_list[1:])
+    nn_s = get_string_from_dict(nn_dict_results)
+    dnn_s = get_string_from_dict(dnn_dict_results)
+    xgb_s = get_string_from_dict(xgb_dict_results)
+    with open(os.path.join(version_path,"sum_learning_res.csv"), "w") as f:
+        f.write("Algorithm,AUC,Acc,TN,FP,FN,TP\n")
+        f.write("NN," + nn_s)
+        f.write("DNN," + dnn_s)
+        f.write("XGB," + xgb_s)
+
+
+def get_learning_results_files(version_path):
     result = []
-    proj_folders = [os.path.join(PATH, folder) for folder in os.listdir(PATH) if "fix" in folder]
+    proj_folders = [os.path.join(version_path, folder) for folder in os.listdir(version_path) if "fix" in folder]
     additional_folders = [os.path.join(proj_folder, "additionalFiles") for proj_folder in proj_folders
                           if r'additionalFiles' in os.listdir(proj_folder)]
     for add_folder in additional_folders:
-        tmp_res = [os.path.join(add_folder, file) for file in os.listdir(add_folder)
-                   if "classifier_score" in file]
-        if len(tmp_res) > 0:
-            result.append(tmp_res)
+        tmp_path = os.path.join(add_folder, "classifier_learning_results.csv")
+        if os.path.exists(tmp_path):
+            result.append(tmp_path)
 
-    result_summary = old_sum_results(result)
-
-    res_file_name = os.path.join(PATH, r'classifier_sum_res.txt')
-    res_file = open(res_file_name, 'w+')
-    for item in result_summary:
-        res_file.write("%s\n" % item)
-    # for k, v in result_summary.items():
-    #     res_file.write(str(k) + "\r\n" + str(v) + '\n\n')
-
-    res_file.close()
-
-
-def update_dict(res_dic, classifier, key):
-    splited_lines = classifier[classifier.index("accuracy"):classifier.index("]]") + 2].split("\\r\\n")
-    splited_lines[1] = splited_lines[1][splited_lines[1].index("auc"):]
-    splited_lines[2] = splited_lines[2][splited_lines[2].index("confusion_matrix:"):]
-    acc = float(splited_lines[0].split(":")[1])
-    auc = float(splited_lines[1].split(":")[1])
-    conf_mat = splited_lines[2].split("\\n")
-    tn, fp = map(float, filter(None, conf_mat[0].split("[[")[1].split("]")[0].split(" ")))
-    fn, tp = map(float, filter(None, conf_mat[1].split("[")[1].split("]]")[0].split(" ")))
-    res_dic[key][1] = res_dic[key][1] + acc
-    res_dic[key][3] = res_dic[key][3] + auc
-    res_dic[key][5] = res_dic[key][5] + (tn / (tn + fp + fn + tp) * 100)
-    res_dic[key][7] = res_dic[key][7] + (fp / (tn + fp + fn + tp) * 100)
-    res_dic[key][9] = res_dic[key][9] + (fn / (tn + fp + fn + tp) * 100)
-    res_dic[key][11] = res_dic[key][11] + (tp / (tn + fp + fn + tp) * 100)
-    res_dic[key][13] = res_dic[key][13] + 1
-
-    i = 8
-
-
-def summarize_classifier_results(classification_score_files):
-    sum_vector = ["acc:", 0, "auc:", 0, "tn:", 0, "fp:", 0, "fn:", 0, "tp:", 0, "count:", 0]
-    # dict_keys = ['0.9_s', '0.9_d', '0.99_s', '0.99_d', '0.999_s', '0.999_d', '0.9999_s', '0.9999_d']
-    res_dic = {"0.9_s": copy.copy(sum_vector), "0.9_d": copy.copy(sum_vector), "0.99_s": copy.copy(sum_vector),
-               "0.99_d": copy.copy(sum_vector), "0.999_s": copy.copy(sum_vector), "0.999_d": copy.copy(sum_vector),
-               "0.9999_s": copy.copy(sum_vector), "0.9999_d": copy.copy(sum_vector)}
-    for classification_file in classification_score_files:
-        with open(classification_file[0]) as f:
-            content = f.readlines()
-            content = str(content).split("----------------")[1:]
-            for classifier, key in zip(content, res_dic.keys()):
-                update_dict(res_dic, classifier[classifier.index("accuracy"):classifier.index("]]") + 2], key)
-    for key in res_dic.keys():
-        for i in range(1, 12, 2):
-            res_dic[key][i] /= 114
-
-    return res_dic
-
-
-def old_sum_results(classification_score_files):
-    sum_vector = ["acc:", 0, "auc:", 0, "tn:", 0, "fp:", 0, "fn:", 0, "tp:", 0, "count:", 0]
-    for classification_file in classification_score_files:
-        with open(classification_file[0]) as f:
-            content = f.readlines()
-            # content = content[11:]
-            acc = float(content[6].split(":")[1])
-            auc = float(content[7].split(":")[1])
-            tn, fp = map(float, filter(None, content[8].split("[[")[1].split("]")[0].split(" ")))
-            fn, tp = map(float, filter(None, content[9].split("[")[1].split("]]")[0].split(" ")))
-            sum_vector[1] = sum_vector[1] + acc
-            sum_vector[3] = sum_vector[3] + auc
-            sum_vector[5] = sum_vector[5] + (tn / (tn + fp + fn + tp) * 100)
-            sum_vector[7] = sum_vector[7] + (fp / (tn + fp + fn + tp) * 100)
-            sum_vector[9] = sum_vector[9] + (fn / (tn + fp + fn + tp) * 100)
-            sum_vector[11] = sum_vector[11] + (tp / (tn + fp + fn + tp) * 100)
-            sum_vector[13] = sum_vector[13] + 1
-
-    return sum_vector
+    return result
 
 
 def find_prev_classifier_version(ADDITIONAL_FILES_PATH, bug_id):
@@ -194,7 +169,7 @@ def find_prev_classifier_version(ADDITIONAL_FILES_PATH, bug_id):
 if __name__ == '__main__':
     # prediction_input_file = r'C:\Users\eyalhad\Desktop\runningProjects\Math_version\math_2_fix\additionalFiles\predictionInputToNN.csv'
     # partial_predicted_data(prediction_input_file)
-    calculate_prediction_results(r'C:\Users\eyalhad\Desktop\runningProjects\Math_version')
+    calculate_prediction_results(r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version')
     # diagnose_summary_results(r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version\results.csv', r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version\results_sum.csv')
     # print(find_prev_classifier_version(r'C:\Users\eyalhad\Desktop\runningProjects\Math_version\math_6_fix
     # \additionalFiles', '6'))

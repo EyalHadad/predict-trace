@@ -65,7 +65,7 @@ def run_classifier(ADDITIONAL_FILES_PATH, bug_id):
     training_input_to_NN = os.path.join(ADDITIONAL_FILES_PATH, r"trainingInputToNN.csv")
     classifier_file = os.path.join(ADDITIONAL_FILES_PATH, r"classifier.pkl")
     output_file = os.path.join(ADDITIONAL_FILES_PATH, "score_" + bug_id + ".csv")
-    classifier_perform_file = os.path.join(ADDITIONAL_FILES_PATH, "classifier_score_" + bug_id + ".txt")
+    classifier_perform_file = os.path.join(ADDITIONAL_FILES_PATH, "classifier_learning_results.csv")
     print("-----Bug Num: " + str(bug_id) + "-----")
     start_t = timeit.default_timer()
     ClassifiersNeural.classify_code(bug_id, training_input_to_NN, prediction_input_to_NN, classifier_file, output_file,
@@ -277,7 +277,7 @@ def myFunc(bug_id, fix_version, bug_version, git_repo_path):
     # if len(func_name_list) == 0:
     #     raise NameError('No buggy functions')
     # todo tracer_parsing
-    tracer_and_parse(DEBUGGER_TESTS_PATH, PROJECT_VERSION, bug_id, bug_version, fix_version,git_repo_local_path, trace_file)
+    # tracer_and_parse(DEBUGGER_TESTS_PATH, PROJECT_VERSION, bug_id, bug_version, fix_version,git_repo_local_path, trace_file)
     # calc_mvn_tests_time(PROJECT_VERSION)
     # todo input_to_NN
     # create_input_NN(ADDITIONAL_FILES_PATH, bug_id, error_file, func_name_list)
@@ -291,7 +291,7 @@ def myFunc(bug_id, fix_version, bug_version, git_repo_path):
     #     return 7
 
     # todo run the classifier code
-    # run_classifier(ADDITIONAL_FILES_PATH, bug_id)
+    run_classifier(ADDITIONAL_FILES_PATH, bug_id)
 
     # todo run createMatrixTxt code
 
