@@ -7,13 +7,11 @@ import java.util.*;
 public class createMatrixTxt {
     public static String bugNumberString = "1", additional_files_path = "", regularMatrixTextFolder = "C:\\Users\\eyalhad\\Desktop\\Math_data\\AmirTxtData";
     public static String[] bugFuncNames;
-    public static String[] inputFile = new String[2];
-    public static String[] outputFilesNames = new String[2];
+    public static String inputFile;
     public static ArrayList<Integer> bugNumbers =new ArrayList<Integer>();
-    public static int category, epsilon = 30, delta = 30;
+    public static int category;
     public static Map<String, Integer> testFuncDic = new  HashMap<String,Integer>(), funcNumberDic = new HashMap<String, Integer>();
     public static Map<String, List<String>> traceDic = new HashMap<String, List<String>>();
-    public static List<Map<String, List<String>>> traceDicList = new ArrayList<Map<String, List<String>>>(5);
 
 
     public static void main(String[] args) throws IOException {
@@ -23,38 +21,20 @@ public class createMatrixTxt {
             init_addresses(args);
         }
         System.out.println("--------CREATE AMIR FILE----------");
-        category = 1;
-
         traceDic.clear();
-        getTestsAndBugNum(inputFile[0],0);
-        StringBuilder failTestClass = writeTextFile(traceDic,additional_files_path + "\\inputMatrix_amir.txt",funcNumberDic);
+        getTestsAndBugNum(inputFile);
+        category = 1;
+        StringBuilder failTestClass = writeTextFile(traceDic,additional_files_path + "\\inputMatrix_oracle.txt",funcNumberDic);
         if(failTestClass.length()== 0)
-        {
             sendFeedback(additional_files_path+ "\\errorFile.txt", 1);
-        }
-        enterFailTestToFiles(failTestClass, additional_files_path + "\\inputMatrix_amir.txt");
-        category = 3;
-        failTestClass = writeTextFile(traceDic,additional_files_path + "\\inputMatrix_eyal_1.txt",funcNumberDic);
-        if(failTestClass.length()== 0)
-        {
-            sendFeedback(additional_files_path+ "\\errorFile.txt", 1);
-        }
-        enterFailTestToFiles(failTestClass, additional_files_path + "\\inputMatrix_eyal_1.txt");
+        enterFailTestToFiles(failTestClass, additional_files_path + "\\inputMatrix_oracle.txt");
+        category = 2;
+        failTestClass = writeTextFile(traceDic,additional_files_path + "\\inputMatrix_baseline.txt",funcNumberDic);
+        enterFailTestToFiles(failTestClass, additional_files_path + "\\inputMatrix_baseline.txt");
 
-//        for( int i=2;i<outputFilesNames.length;i++)
-//        {
-//            traceDic.clear();
-//            getTestsAndBugNum(inputFile[i],i);
-//            StringBuilder failTestClass = writeTextFile(traceDic,outputFilesNames[i],funcNumberDic);
-//            if(failTestClass.length()== 0)
-//            {
-//                sendFeedback(additional_files_path+ "\\errorFile.txt", 1);
-//                break;
-//            }
-//            enterFailTestToFiles(failTestClass, outputFilesNames[i]);
-//            category = 3;
-//
-//        }
+        category = 3;
+        failTestClass = writeTextFile(traceDic,additional_files_path + "\\inputMatrix_prediction.txt",funcNumberDic);
+        enterFailTestToFiles(failTestClass, additional_files_path + "\\inputMatrix_prediction.txt");
         sendFeedback(additional_files_path + "\\errorFile.txt", 0);
     }
 
@@ -65,20 +45,20 @@ public class createMatrixTxt {
     }
 
 
-    private static void getTestsAndBugNum(String path,int fileIndex) throws IOException {
+    private static void getTestsAndBugNum(String path) throws IOException {
 
         int funcIndex;
         String line;
-        String[] lineData = new String[4];
+        String[] lineData;
         try (BufferedReader br = new BufferedReader(new FileReader(path))) {
             br.readLine(); //remove first line
             funcIndex=0;
             while ((line = br.readLine()) != null) {
+                if(line.equals(""))
+                    continue;
                 lineData = line.split(",");
                 String testFuncNamesConcate = lineData[0] + lineData[1];
                 //create funcNumberDic to get number for every function
-                if(fileIndex==0)
-                {
                     if(!funcNumberDic.containsKey(lineData[1]))
                     {
                         funcNumberDic.put(lineData[1],funcIndex);
@@ -88,20 +68,17 @@ public class createMatrixTxt {
                     {
                         testFuncDic.put(testFuncNamesConcate,1);
                     }
-                }
                 //dic for check that we didn't double insert the same combination
                 if(!lineData[2].equals("0.0") || lineData[3].equals("1"))
                 {
                     if (!traceDic.containsKey(lineData[0])) {
                         traceDic.put(lineData[0], new ArrayList<String>());
                     }
-                    traceDic.get(lineData[0]).add(lineData[1] + "=" + lineData[2] + "=" + lineData[3]);
+                    traceDic.get(lineData[0]).add(lineData[1] + "=" + lineData[2] + "=" + lineData[3] + "=" + lineData[4]);
                 }
-
             }
         }
-        if(fileIndex==0)
-            updateBugsNumbers(funcNumberDic);
+        updateBugsNumbers(funcNumberDic);
     }
 
     private static void updateBugsNumbers(Map<String,Integer> funcDic) {
@@ -120,8 +97,8 @@ public class createMatrixTxt {
 
         PrintWriter writer = new PrintWriter(textOutputFileName, "UTF-8");
         StringBuilder failedTestForInit = new StringBuilder(""), CompNames = new StringBuilder("["), priors = new StringBuilder("["), bugListToFile = new StringBuilder("["), initTestListToFile = new StringBuilder("[");
-        StringBuilder trace = new StringBuilder(), predictionTrace = new StringBuilder(), traceWithNoise = new StringBuilder(), act_trace = new StringBuilder();
-        boolean bug,havePrediction,haveAct,hadFailedTest = false;
+        StringBuilder trace = new StringBuilder(), predictionTrace = new StringBuilder(), act_trace = new StringBuilder(), baselineTrace= new StringBuilder();
+        boolean bug,havePrediction,haveBaseline,haveAct,hadFailedTest = false;
         String noise;
 
         writeWithoutTrace(testsFunctionDetails, funcDic, writer, CompNames, priors, bugListToFile, initTestListToFile);
@@ -129,55 +106,39 @@ public class createMatrixTxt {
         //////////////////////////////traces///////////////////////////////
 
         for (Map.Entry<String, List<String>>  testEntry : testsFunctionDetails.entrySet()) {
-            trace.setLength(0);
-            predictionTrace.setLength(0);
-            traceWithNoise.setLength(0);
-            act_trace.setLength(0);
+            trace.setLength(0); predictionTrace.setLength(0);act_trace.setLength(0);baselineTrace.setLength(0);
             String key = testEntry.getKey();
             List<String> functionAndPrediction = testEntry.getValue();
-            trace.append(key).append(";");
-            predictionTrace.append("{");
-            traceWithNoise.append("{");
-            act_trace.append("[");
-            bug = false;
-            havePrediction = false;
-            haveAct = false;
+            trace.append(key).append(";"); predictionTrace.append("{"); act_trace.append("[");baselineTrace.append("[");
+            bug = false; haveBaseline = false; havePrediction = false; haveAct = false;
             for(int k=0;k<functionAndPrediction.size();k++)
             {
                 String [] values = functionAndPrediction.get(k).split("=");
                 int compNum= funcDic.get(values[0]);
                 havePrediction = haveProbabilityToBeInTrace(havePrediction, predictionTrace, values[1], compNum);
                 // if it actually in the trace
-                if(Float.valueOf(values[2])==1)
+                if(Float.parseFloat(values[2])==1)
                 {
-                    Random generator = new Random();
-                    int number = generator.nextInt(epsilon);
-                    double result = number / 100.0;
-                    noise = String.valueOf(1-result);
-                    traceWithNoise.append(compNum).append(":").append(noise).append(", "); // add to the list with the noise
                     act_trace.append(compNum).append(", "); // the actual trace
                     haveAct = true;
-                    if(bugNumbers.contains(compNum ))
+                    if(bugNumbers.contains(compNum))
                         bug = true;
                 }
-                else{
-                    Random generator = new Random();
-                    int number = generator.nextInt(delta);
-                    double result = number / 100.0;
-                    noise = String.valueOf(0 + result);
-                    traceWithNoise.append(compNum).append(":").append(noise).append(", ");
+                if(Float.parseFloat(values[3])==1)
+                {
+                    baselineTrace.append(compNum).append(", "); // the actual trace
+                    haveBaseline = true;
                 }
 
             }
 
-            setListsLengthAndClose(havePrediction, haveAct, predictionTrace, traceWithNoise, act_trace);
-
-            editTheTraceToInsertByCategory(trace, predictionTrace, traceWithNoise, act_trace);
+            setListsLengthAndClose(havePrediction, haveAct, haveBaseline, predictionTrace, act_trace, baselineTrace);
+            editTheTraceToInsertByCategory(trace, predictionTrace, act_trace, baselineTrace);
 
             if(bug)
             {
                 trace.append("1");
-                if(hadFailedTest==false)
+                if(!hadFailedTest)
                 {
                     failedTestForInit.append(key);
                     hadFailedTest = true;
@@ -192,27 +153,28 @@ public class createMatrixTxt {
         return failedTestForInit;
     }
 
-    private static void editTheTraceToInsertByCategory(StringBuilder trace, StringBuilder predictionTrace, StringBuilder traceWithNoise, StringBuilder act_trace) {
+    private static void editTheTraceToInsertByCategory(StringBuilder trace, StringBuilder predictionTrace, StringBuilder act_trace, StringBuilder baselineTrace) {
         if(category==1)
             trace.append(act_trace);
         else if (category==2)
-            trace.append(act_trace).append(traceWithNoise);
+            trace.append(baselineTrace);
         else
             trace.append(act_trace).append(predictionTrace);
     }
 
-    private static void setListsLengthAndClose(boolean havePrediction, boolean haveAct, StringBuilder predictionTrace, StringBuilder traceWithNoise, StringBuilder act_trace) {
-        if(havePrediction)
-            predictionTrace.setLength(predictionTrace.length() - 2);
-
+    private static void setListsLengthAndClose(boolean havePrediction, boolean haveAct,  boolean haveBaseline, StringBuilder predictionTrace, StringBuilder act_trace, StringBuilder baselineTrace) {
         if(haveAct)
         {
             act_trace.setLength(act_trace.length() - 2);
-            traceWithNoise.setLength(traceWithNoise.length() - 2);
         }
-        predictionTrace.append("};");
+        if(havePrediction)
+            predictionTrace.setLength(predictionTrace.length() - 2);
+        if(haveBaseline)
+            baselineTrace.setLength(baselineTrace.length() - 2);
+
         act_trace.append("];");
-        traceWithNoise.append("};");
+        baselineTrace.append("];");
+        predictionTrace.append("};");
     }
 
     private static boolean haveProbabilityToBeInTrace(boolean havePrediction, StringBuilder predictionTrace, String value, int compNum) {
@@ -378,23 +340,25 @@ public class createMatrixTxt {
         String input_bug_functions = args[1];
         bugFuncNames = input_bug_functions.split(" ");
         additional_files_path = args[2];
-        outputFilesNames[0] = additional_files_path + "\\inputMatrix_amir.txt";
-        outputFilesNames[1] = additional_files_path + "\\inputMatrix_eyal_1.txt";
-//        outputFilesNames[2] = additional_files_path + "\\inputMatrix_eyal_2.txt";
-//        outputFilesNames[3] = additional_files_path + "\\inputMatrix_eyal_3.txt";
-        StringBuilder inputNew = new StringBuilder();
-        String[] stringList = {"9","99","999","9999"};
-        for(int i=0;i<4;i ++)
-        {
-            inputNew.append(additional_files_path).append("\\score_").append(bugNumberString).append("_").append(stringList[i]).append(".csv ");
-        }
-        String[] inputArray = inputNew.toString().split(" ");
-
-//        additional_files_path + "\\score_1_5.csv";
-        inputFile[0] = additional_files_path + "\\score_" + bugNumberString + "_5.csv";
-        inputFile[1] = inputArray[1];
-//        inputFile[2] = inputArray[1];
-//        inputFile[3] = inputArray[2];
+        inputFile = additional_files_path + "\\classifier_predictions.csv";
+//
+//        outputFilesNames[0] = additional_files_path + "\\inputMatrix_amir.txt";
+//        outputFilesNames[1] = additional_files_path + "\\inputMatrix_eyal_1.txt";
+////        outputFilesNames[2] = additional_files_path + "\\inputMatrix_eyal_2.txt";
+////        outputFilesNames[3] = additional_files_path + "\\inputMatrix_eyal_3.txt";
+//        StringBuilder inputNew = new StringBuilder();
+//        String[] stringList = {"9","99","999","9999"};
+//        for(int i=0;i<4;i ++)
+//        {
+//            inputNew.append(additional_files_path).append("\\score_").append(bugNumberString).append("_").append(stringList[i]).append(".csv ");
+//        }
+//        String[] inputArray = inputNew.toString().split(" ");
+//
+////        additional_files_path + "\\score_1_5.csv";
+//        inputFile[0] = additional_files_path + "\\score_" + bugNumberString + "_5.csv";
+//        inputFile[1] = inputArray[1];
+////        inputFile[2] = inputArray[1];
+////        inputFile[3] = inputArray[2];
     }
 
 }

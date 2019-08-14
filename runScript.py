@@ -64,7 +64,7 @@ def run_classifier(ADDITIONAL_FILES_PATH, bug_id):
     prediction_input_to_NN = os.path.join(ADDITIONAL_FILES_PATH, r"predictionInputToNN.csv")
     training_input_to_NN = os.path.join(ADDITIONAL_FILES_PATH, r"trainingInputToNN.csv")
     classifier_file = os.path.join(ADDITIONAL_FILES_PATH, r"classifier.pkl")
-    output_file = os.path.join(ADDITIONAL_FILES_PATH, "score_" + bug_id + ".csv")
+    output_file = os.path.join(ADDITIONAL_FILES_PATH, "classifier_predictions.csv")
     classifier_perform_file = os.path.join(ADDITIONAL_FILES_PATH, "classifier_learning_results.csv")
     print("-----Bug Num: " + str(bug_id) + "-----")
     start_t = timeit.default_timer()
@@ -119,7 +119,7 @@ def tracer_and_parse(DEBUGGER_TESTS_PATH, PROJECT_VERSION, bug_id, bug_version, 
     if not os.path.exists(DEBUGGER_TESTS_PATH):
         os.makedirs(DEBUGGER_TESTS_PATH)
     traces = repo.run_under_jcov(DEBUGGER_TESTS_PATH, False)
-    writeTraceFile(traces, trace_file)
+    write_trace_file(traces, trace_file)
     total_t = timeit.default_timer() - start_t
     writeToLogTime("Tracer: " + str(total_t / 60) + "\r\n")
 
@@ -291,7 +291,7 @@ def myFunc(bug_id, fix_version, bug_version, git_repo_path):
     #     return 7
 
     # todo run the classifier code
-    run_classifier(ADDITIONAL_FILES_PATH, bug_id)
+    # run_classifier(ADDITIONAL_FILES_PATH, bug_id)
 
     # todo run createMatrixTxt code
 
@@ -305,7 +305,7 @@ def myFunc(bug_id, fix_version, bug_version, git_repo_path):
     #     writeToLog(bug_id, func_name_list)
     #     return 7
     # todo run_ diagnoser
-    # run_diagnoser(ADDITIONAL_FILES_PATH, bug_id)
+    run_diagnoser(ADDITIONAL_FILES_PATH, bug_id)
 
     total_elapsed = timeit.default_timer() - total_start_time
     writeToLogTime("Total Bug" + str(bug_id) + " time: " + str(total_elapsed / 60) + "\r\n")
