@@ -8,6 +8,37 @@ import time
 import pandas as pd
 
 
+def compare_time_files(featuers_time_path, mvn_time_path, mvn_trace_time_path, output_file):
+    mvn_dict, mvn_trace_dict, features_dict = {}, {}, {}
+    with open(featuers_time_path) as features_file, open(mvn_time_path) as mvn_file, \
+            open(mvn_trace_time_path) as mvn_trace_file:
+        features_content = features_file.readlines()
+        for line in features_content:
+            num_to_insert = line.split(',')[1:]
+            num_to_insert[-1] = num_to_insert[-1].strip()
+            for i in range(0, len(num_to_insert)):
+                num_to_insert[i] = str((float(num_to_insert[i]) / 1000))
+            features_dict[line.split(',')[0]] = num_to_insert
+
+        mvn_content = mvn_file.readlines()
+        for line in mvn_content:
+            mvn_dict[line.split(',')[0]] = line.split(',')[1]
+        mvn_trace_content = mvn_trace_file.readlines()
+        for line in mvn_trace_content:
+            name_to_insert = line.split(',')[0]
+            name_to_insert = name_to_insert.replace("lang3", "lang")
+            mvn_trace_dict[name_to_insert] = line.split(',')[1]
+    common_keys = mvn_dict.keys() & mvn_trace_dict.keys() & features_dict.keys()
+    header_line = "testName,PathLength,FuncInDegree,TestOutDegree,PathExistence,ClassCommonWords,FuncCommonWords," \
+                  "ClassSim,FuncSim,TotalFeaturesTime,RunTime,TraceRunTime\n"
+    with open(output_file, "w+") as output_f:
+        output_f.write(header_line)
+        for key in common_keys:
+            line_str = key + "," + ",".join(features_dict[key]) + "," + mvn_dict[key].rstrip() + "," + mvn_trace_dict[
+                key].rstrip() + "\n"
+            output_f.write(line_str)
+
+
 def write_trace_file(traces, trace_file):
     if os.path.exists(trace_file):
         trace_file = open(trace_file, 'a+')
@@ -123,8 +154,8 @@ def copy_traces(source_path, dest_path):
 
 
 if __name__ == '__main__':
-    # prediction_input_file = r'C:\Users\eyalhad\Desktop\runningProjects\Math_version\math_2_fix\additionalFiles
-    # \predictionInputToNN.csv' calculate_prediction_results(r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version')
-    copy_traces(r'C:\Users\eyalhad\Desktop\copyTrace\Lang\lang_@_fix',
-                r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version\lang_@_fix\additionalFiles')
+    # prediction_input_file = r'C:\Users\eyalhad\Desktop\runningProjects\Math_version\math_2_fix\additionalFiles\predictionInputToNN.csv'
+    calculate_prediction_results(r'D:\runningProjects\Lang_version')
+    # copy_traces(r'C:\Users\eyalhad\Desktop\copyTrace\Lang\lang_@_fix',
+    #             r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version\lang_@_fix\additionalFiles')
     # print(find_prev_classifier_version(r'C:\Users\eyalhad\Desktop\runningProjects\Math_version\math_6_fix
