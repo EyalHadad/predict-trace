@@ -16,7 +16,7 @@ from sklearn.neural_network import MLPClassifier
 from additional_functions import find_prev_classifier_version
 
 
-def get_and_split_data_initial_data(input_file):
+def get_and_split_data_initial_data(input_file, dest_feature):
     start_time = time.time()
     dataset = pd.read_csv(input_file, usecols=list(range(2, 17)))
     dataset = dataset.dropna()
@@ -24,7 +24,7 @@ def get_and_split_data_initial_data(input_file):
     print("Total reading pandas time:" + str(elapsed_time))
 
     # ********************create classifier******************
-    x = dataset.loc[:, 'PathLength':'partTarceCommonFuncWords']
+    x = dataset.loc[:, 'PathLength':'dest_feature']
     y = dataset.loc[:, 'y']
     if len([ind for ind in dataset.index[dataset['PathExistence'] == 1]]) < 100:
         raise Exception('Not enough paths')
@@ -170,11 +170,13 @@ def classify_code(bugID, training_input_file, prediction_input_file, classifier_
     print "----------Training--------------"
     warnings.filterwarnings("ignore")
     start = time.time()
-    x, y = get_and_split_data_initial_data(training_input_file)
+    x, y = get_and_split_data_initial_data(training_input_file, 'partTarceCommonFuncWords')
     clf_list_to_save = split_data_and_get_best_classifier(x, y, classifier_perform_file)
-    save_trained_classifiers_in_files(classifier_path_to_save, clf_list_to_save)
-    elapsed = time.time() - start
-    print("Total training time: " + str(elapsed))
+    x, y = get_and_split_data_initial_data(training_input_file, 'FuncSim')
+    clf_list_to_save = split_data_and_get_best_classifier(x, y, classifier_perform_file.split(".")[0] + "_short.txt")
+    # save_trained_classifiers_in_files(classifier_path_to_save, clf_list_to_save)
+    # elapsed = time.time() - start
+    # print("Total training time: " + str(elapsed))
 
     # open the classifier of previous
     # classifier_list_to_use = find_prev_classifier_version(ADDITIONAL_FILES_PATH, bugID)

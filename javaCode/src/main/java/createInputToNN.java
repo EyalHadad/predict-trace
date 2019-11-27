@@ -86,17 +86,17 @@ public class createInputToNN {
                 belongToTrain = true;
             }
             List<String> testPartTrace = new ArrayList<>(traceDic.get(testFunction));
-            String partTraceString = "";
+            StringBuilder partTraceString = new StringBuilder();
             for(String s : testPartTrace)
             {
-                partTraceString += s + ",";
+                partTraceString.append(s).append(",");
             }
 
-            dicToSave.put(testFunction,partTraceString);
+            dicToSave.put(testFunction, partTraceString.toString());
             testPartTrace.retainAll(partTraceFunctionList);
             testPartTrace.remove(testFunction);
             notPartTraceFunctionList.remove(testFunction);
-            createCSV(targetFunctionList, traceFolder, testFunction, directedGraph, trainingWriter,predictWriter, lineLength, pathCount, vertexDic,traceDic,belongToTrain, testPartTrace, notPartTraceFunctionList, callGraph);
+            createCSV(targetFunctionList, traceFolder, testFunction, directedGraph, trainingWriter,predictWriter, lineLength, pathCount, vertexDic,traceDic, belongToTrain, testPartTrace, notPartTraceFunctionList, callGraph);
         }
         returnError(FULL_ADDITIONAL_FILES_PATH + "\\errorFile.txt", 0);
         savePartTrace(partTraceWriter,dicToSave,partTraceFunctionList);

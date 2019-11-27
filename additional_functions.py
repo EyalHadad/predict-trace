@@ -191,13 +191,13 @@ def find_prev_classifier_version(ADDITIONAL_FILES_PATH, bug_id):
 
     return [os.path.join(ADDITIONAL_FILES_PATH, f) for f in os.listdir(tmp_add_file) if f.endswith('.pkl')]
 
-def copy_traces(source_path, dest_path):
+def copy_files(source_path, dest_path, file_to_copy):
     copy_conter = 0
     for num in range(141):
         new_source_path = source_path.replace("@", str(num))
         new_dest_path = dest_path.replace("@", str(num))
         if os.path.isdir(new_source_path) and os.path.isdir(new_dest_path):
-            file_to_move = os.path.join(new_source_path, 'traceFile.txt')
+            file_to_move = os.path.join(new_source_path, file_to_copy)
             if os.path.exists(file_to_move):
                 shutil.copy(file_to_move, new_dest_path)
                 print(new_dest_path)
@@ -208,9 +208,14 @@ def copy_traces(source_path, dest_path):
 if __name__ == '__main__':
     # prediction_input_file = r'C:\Users\eyalhad\Desktop\runningProjects\Math_version\math_2_fix\additionalFiles\predictionInputToNN.csv'
     # partial_predicted_data(prediction_input_file)
-    calculate_prediction_results(r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version')
-    # copy_traces(r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version\lang_@_fix\additionalFiles',
-    #             r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version_2\lang_@_fix\additionalFiles')
+    # calculate_prediction_results(r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version')
+
+    # copy_files(r'C:\Users\eyalhad\Desktop\copyTrace\Lang\lang_@_fix',
+    #             r'D:\runningProjects\Lang_version\lang_@_fix\additionalFiles','traceFile.txt')
+
+    copy_files(r'C:\Users\eyalhad\Desktop\copyCallGraph\Lang\lang_@_fix',
+               r'D:\runningProjects\Lang_version\lang_@_fix\additionalFiles', 'callGraph.txt')
+
     # diagnose_summary_results(r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version\results.csv', r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version\results_sum.csv')
     # print(find_prev_classifier_version(r'C:\Users\eyalhad\Desktop\runningProjects\Math_version\math_6_fix
     # \additionalFiles', '6'))
