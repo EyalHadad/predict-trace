@@ -6,6 +6,8 @@ import random
 import time
 import pandas as pd
 import shutil
+from os import listdir
+from os.path import isfile, join, exists
 
 
 def writeTraceFile(traces_dicionary, TRACE_FILE):
@@ -26,15 +28,22 @@ def writeTraceFile(traces_dicionary, TRACE_FILE):
     trace_file.close()
 
 
-def get_project_jar_path(PROJECT_VERSION):
-    dd = PROJECT_VERSION
-    from os import listdir
-    from os.path import isfile, join
-    only_files = [f for f in listdir(dd) if isfile(join(dd, f))]
-    if len(only_files) > 0:
-        for file in only_files:
-            if file.endswith('.jar'):
-                return os.path.join(PROJECT_VERSION, file)
+def get_project_jar_path(target_folder):
+    if exists(target_folder):
+        only_files = [f for f in listdir(target_folder) if isfile(join(target_folder, f))]
+        if len(only_files) > 0:
+            for file in only_files:
+                if file.endswith('.jar'):
+                    return os.path.join(target_folder, file)
+    else:
+        target_folder = target_folder.replace("\\target", " ")
+        res = []
+        for root, dirs, files in os.walk(target_folder):
+            for name in files:
+                # if name.endswith(".jar"):
+                res.append(os.path.join(target_folder, name))
+
+        return res
 
 
 def add_vectors(vector_to_add, sum_vector):
@@ -191,6 +200,61 @@ def find_prev_classifier_version(ADDITIONAL_FILES_PATH, bug_id):
 
     return [os.path.join(ADDITIONAL_FILES_PATH, f) for f in os.listdir(tmp_add_file) if f.endswith('.pkl')]
 
+
+def calculate_classifier_results(perform_file):
+    counter_results = 0
+    part_gall_graph_higher = 0
+    sum_nn_full = 0
+    sum_dnn_full = 0
+    sum_nn_small = 0
+    sum_dnn_small = 0
+    for num in range(141):
+        tmp_perform_file = perform_file
+        current_name = tmp_perform_file.replace("@", str(num))
+        # semi_results = current_name.split(".")[0] + "_short.csv"
+        full_results = current_name
+        if os.path.exists(full_results):
+            # print(full_results)
+            counter_results = counter_results + 1
+            # with open(semi_results) as f:
+            #     content = f.readlines()
+            #     sum_nn_small += float(content[0].split(",")[2].split(":")[1])
+            #     # print("Small: " + content[0].split(",")[2].split(":")[1])
+            #     tmp_small = float(content[0].split(",")[2].split(":")[1])
+            #     sum_dnn_small += float(content[1].split(",")[2].split(":")[1])
+            with open(full_results) as f:
+                content = f.readlines()
+                sum_nn_full += float(content[0].split(",")[2].split(":")[1])
+                # print("Full: " + content[0].split(",")[2].split(":")[1])
+                # if tmp_small > float(content[0].split(",")[2].split(":")[1]):
+                #     part_gall_graph_higher = part_gall_graph_higher + 1
+                sum_dnn_full += float(content[1].split(",")[2].split(":")[1])
+
+    print(str(counter_results) + " results were calculated")
+    print(str(part_gall_graph_higher) + " part_gall_graph_worse")
+    print("NN_full: " + str(sum_nn_full / counter_results) + ", DNN_full: " + str(sum_dnn_full / counter_results))
+    # print("NN_small: " + str(sum_nn_small / counter_results) + ", DNN_small: " + str(sum_dnn_small / counter_results))
+
+
+def classifier_results_function_percentage(perform_file):
+    res_dict = {'1': [], '2': [], '3': [], '4': [], '5': [], '6': [], '7': [], '8': [], '9': []}
+    for num in range(15, 141):
+        tmp_perform_file = perform_file
+        version_current_name = tmp_perform_file.replace("@", str(num))
+        for split_size in range(1, 9):
+            test_size_split = split_size / float(10)
+            tmp_clf_perform_file = version_current_name.split(".")[0] + "_0.00" + str(split_size) + ".csv"
+            if os.path.exists(tmp_clf_perform_file):
+                with open(tmp_clf_perform_file) as f:
+                    content = f.readlines()
+                    res_dict[str(split_size)].append(float(content[0].split(",")[2].split(":")[1]))
+
+    for key in range(1, 9):
+        print(key + (sum(res_dict[str(key)]) / len(res_dict[str(key)])))
+
+    return res_dict
+
+
 def copy_files(source_path, dest_path, file_to_copy):
     copy_conter = 0
     for num in range(141):
@@ -205,16 +269,116 @@ def copy_files(source_path, dest_path, file_to_copy):
 
     print(str(copy_conter) + " file were copied")
 
+
+def calculate_dict_coverage(path):
+    with open(path, "r") as f:
+        contents = f.readlines()
+
+    coverage_dict = {}
+    lines = [[x.split(",")[1], float(x.split(",")[2]), int(x.split(",")[3].strip('\n'))] for x in contents if
+             len(x) > 1]
+    for line in lines:
+        key = line[0]
+        prob = line[1]
+        act = line[2]
+        if key not in coverage_dict:
+            coverage_dict[key] = [act, []]
+            coverage_dict[key][1].append((1 - prob))
+        else:
+            coverage_dict[key][0] = max(coverage_dict[key][0], act)
+            coverage_dict[key][1].append((1 - prob))
+
+    for key in coverage_dict:
+        insert_val = reduce(lambda f_x, s_y: f_x * s_y, coverage_dict[key][1])
+        coverage_dict[key][1] = 1 - insert_val
+    return coverage_dict
+
+
+def calculate_all_coverage(path):
+    res_dict_list = []
+
+    for num in range(149):
+        source_path = path.replace("@", str(num))
+        if os.path.exists(source_path):
+            res_dict_list.append(calculate_dict_coverage(source_path))
+    return res_dict_list
+
+
+def print_coverage_res(c_list, t_path):
+    l1, l2, l3 = list(zip(*c_list))
+    df_1 = pd.DataFrame(data=list(l1), columns=['Total Number'])
+    df_2 = pd.DataFrame(data=list(l2), columns=['Actual'])
+    df_3 = pd.DataFrame(data=list(l3), columns=['Predicted'])
+    res_df = df_1.join(df_2).join(df_3)
+    res_df[['Total Number', 'Actual', 'Predicted']].to_csv(t_path, sep=',', index=False, index_label=["Ind"])
+
+
+def calculate_coverage(coverage_dict, func_size):
+    sub_dict_size = int(len(coverage_dict.keys()) * func_size)
+    sub_dict = dict(random.sample(coverage_dict.items(), sub_dict_size))
+    coverage, predicted_coverage = 0, 0
+    for key, value in sub_dict.items():
+        coverage = coverage + value[0]
+        predicted_coverage = predicted_coverage + value[1]
+    print("total_func" + str(func_size) + ": " + str(sub_dict_size))
+    coverage_percentage = int((float(coverage) / sub_dict_size) * 100)
+    predicted_percentage = int((float(predicted_coverage) / sub_dict_size) * 100)
+    return [sub_dict_size, coverage_percentage, predicted_percentage]
+
+
+def calculate_coverage_from_dicts(s_list, percentage_l, target_path):
+    for func_size in percentage_l:
+        coverage_list = []
+        for cov_dict in s_list:
+            coverage_list.append(calculate_coverage(cov_dict, func_size))
+        print_coverage_res(coverage_list, target_path.replace(".csv", str(func_size) + ".csv"))
+
+
+def create_commit_file_from_json():
+    import json
+    res = []
+    path = r'C:\Users\eyalhad\Desktop\bugdotjar-bugs.json'
+    with open(path, "r") as f:
+        cont = json.load(f)
+
+    for entry in cont:
+        proj_name, proj_commit = None, None
+        for key, val in entry.items():
+            if key == 'commit':
+                proj_commit = val
+            if key == 'project':
+                proj_name = val
+            # res.append([val['project'], val['commit']])
+        if proj_name is not None and proj_commit is not None:
+            res.append([proj_name, proj_commit])
+        else:
+            raise Exception
+    commit_list = [x[1] for x in res if x[0] == 'maven']
+    output_path = r'C:\Users\eyalhad\Desktop\maven_commits.csv'
+    with open(output_path, 'w') as f:
+        f.writelines('\n'.join(commit_list))
+    i = 6
+
+
 if __name__ == '__main__':
+    # create_commit_file_from_json()
     # prediction_input_file = r'C:\Users\eyalhad\Desktop\runningProjects\Math_version\math_2_fix\additionalFiles\predictionInputToNN.csv'
     # partial_predicted_data(prediction_input_file)
     # calculate_prediction_results(r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version')
+    # coverage_dict_list = calculate_all_coverage(
+    #     r'D:\runningProjects\Lang_version\lang_@_fix\additionalFiles\score_@_pkl.csv')
+    # percentage_list = [1, 0.5, 0.25, 0.1]
+    # calculate_coverage_from_dicts(s_list=coverage_dict_list, percentage_l=percentage_list,
+    #                               target_path=r'D:\runningProjects\Lang_version\coverage_summary.csv')
 
-    # copy_files(r'C:\Users\eyalhad\Desktop\copyTrace\Lang\lang_@_fix',
-    #             r'D:\runningProjects\Lang_version\lang_@_fix\additionalFiles','traceFile.txt')
+    # return_dict = classifier_results_function_percentage(
+    #     r'D:\runningProjects\Math_version\math_@_fix\additionalFiles\classifier_learning_results.csv')
+    # print ("end")
+    copy_files(r'C:\Users\eyalhad\Desktop\copyTrace\Maven\maven_@_fix',
+               r'D:\runningProjects\Maven_version\maven_@_fix\additionalFiles', 'traceFile.txt')
 
-    copy_files(r'C:\Users\eyalhad\Desktop\copyCallGraph\Lang\lang_@_fix',
-               r'D:\runningProjects\Lang_version\lang_@_fix\additionalFiles', 'callGraph.txt')
+    # copy_files(r'C:\Users\eyalhad\Desktop\copyCallGraph\Math\math_@_fix',
+    #            r'D:\runningProjects\Math_version\math_@_fix\additionalFiles', 'callGraph.txt')
 
     # diagnose_summary_results(r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version\results.csv', r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version\results_sum.csv')
     # print(find_prev_classifier_version(r'C:\Users\eyalhad\Desktop\runningProjects\Math_version\math_6_fix

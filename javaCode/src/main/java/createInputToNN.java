@@ -45,8 +45,8 @@ public class createInputToNN {
 
         readTraceFile(TRACE_FILE_PATH, traceDic,testsList,funcRank);
         List<String> targetFunctionList = new ArrayList<>(funcRank.keySet());
-        List<String> notPartTraceFunctionList = new ArrayList<>(targetFunctionList.subList(1,targetFunctionList.size()/2));
-        List<String> partTraceFunctionList = new ArrayList<>(targetFunctionList.subList(targetFunctionList.size()/2,targetFunctionList.size()));
+        List<String> functionToPredict = new ArrayList<>(targetFunctionList.subList(1,((targetFunctionList.size())/100)));
+        List<String> functionToPT = new ArrayList<>(targetFunctionList.subList(((targetFunctionList.size())/100),targetFunctionList.size()));
         Map <String,String> dicToSave = new HashMap<String,String>();
 
         //////create call graph//////////////
@@ -93,13 +93,13 @@ public class createInputToNN {
             }
 
             dicToSave.put(testFunction, partTraceString.toString());
-            testPartTrace.retainAll(partTraceFunctionList);
+            testPartTrace.retainAll(functionToPT);
             testPartTrace.remove(testFunction);
-            notPartTraceFunctionList.remove(testFunction);
-            createCSV(targetFunctionList, traceFolder, testFunction, directedGraph, trainingWriter,predictWriter, lineLength, pathCount, vertexDic,traceDic, belongToTrain, testPartTrace, notPartTraceFunctionList, callGraph);
+            functionToPredict.remove(testFunction);
+            createCSV(targetFunctionList, traceFolder, testFunction, directedGraph, trainingWriter,predictWriter, lineLength, pathCount, vertexDic,traceDic, belongToTrain, testPartTrace, functionToPredict, callGraph);
         }
         returnError(FULL_ADDITIONAL_FILES_PATH + "\\errorFile.txt", 0);
-        savePartTrace(partTraceWriter,dicToSave,partTraceFunctionList);
+        savePartTrace(partTraceWriter,dicToSave,functionToPT);
         trainingWriter.close();
         predictWriter.close();
         partTraceWriter.close();
