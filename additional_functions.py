@@ -8,6 +8,7 @@ import pandas as pd
 import shutil
 from os import listdir
 from os.path import isfile, join, exists
+from configure_class import Configure, FilesAddress, RunConfigure
 
 
 def writeTraceFile(traces_dicionary, TRACE_FILE):
@@ -28,22 +29,24 @@ def writeTraceFile(traces_dicionary, TRACE_FILE):
     trace_file.close()
 
 
-def get_project_jar_path(target_folder):
-    if exists(target_folder):
-        only_files = [f for f in listdir(target_folder) if isfile(join(target_folder, f))]
+def get_project_jar_path(run_conf):
+    target_path = run_conf.git_repo_local_path + r'\target'
+    if exists(target_path):
+        only_files = [f for f in listdir(target_path) if isfile(join(target_path, f))]
         if len(only_files) > 0:
             for file in only_files:
                 if file.endswith('.jar'):
-                    return os.path.join(target_folder, file)
-    else:
-        target_folder = target_folder.replace("\\target", " ")
-        res = []
-        for root, dirs, files in os.walk(target_folder):
-            for name in files:
-                # if name.endswith(".jar"):
-                res.append(os.path.join(target_folder, name))
-
-        return res
+                    res_path = os.path.join(target_path, file)
+                    if len(res_path) > 0:
+                        return res_path
+    res = []
+    for folder in os.listdir(run_conf.git_repo_local_path):
+        target_folder = os.path.join(run_conf.git_repo_local_path, folder, 'target')
+        if exists(target_folder):
+            for f_file in listdir(target_folder):
+                if f_file.endswith(".jar"):
+                    res.append(os.path.join(target_folder, f_file))
+    return res
 
 
 def add_vectors(vector_to_add, sum_vector):
@@ -260,6 +263,8 @@ def copy_files(source_path, dest_path, file_to_copy):
     for num in range(141):
         new_source_path = source_path.replace("@", str(num))
         new_dest_path = dest_path.replace("@", str(num))
+        if not exists(new_dest_path):
+            os.makedirs(new_dest_path)
         if os.path.isdir(new_source_path) and os.path.isdir(new_dest_path):
             file_to_move = os.path.join(new_source_path, file_to_copy)
             if os.path.exists(file_to_move):
@@ -374,11 +379,14 @@ if __name__ == '__main__':
     # return_dict = classifier_results_function_percentage(
     #     r'D:\runningProjects\Math_version\math_@_fix\additionalFiles\classifier_learning_results.csv')
     # print ("end")
-    copy_files(r'C:\Users\eyalhad\Desktop\copyTrace\Maven\maven_@_fix',
-               r'D:\runningProjects\Maven_version\maven_@_fix\additionalFiles', 'traceFile.txt')
+    # copy_files(r'D:\runningProjects\Maven_version\maven_@_fix\additionalFiles',
+    #             r'C:\Users\eyalhad\Desktop\copyCallGraph\Maven\maven_@_fix', 'callGraph.txt')
+    # copy_files(r'C:\Users\eyalhad\Desktop\copyTrace\Wicket\wicket_@_fix',
+    #            r'D:\runningProjects\Wicket_version\wicket_@_fix\additionalFiles', 'traceFile.txt')
 
-    # copy_files(r'C:\Users\eyalhad\Desktop\copyCallGraph\Math\math_@_fix',
-    #            r'D:\runningProjects\Math_version\math_@_fix\additionalFiles', 'callGraph.txt')
+
+    copy_files(r'C:\Users\eyalhad\Desktop\copyCallGraph\Math\math_@_fix',
+               r'D:\runningProjects\Math_version\math_@_fix\additionalFiles', 'callGraph.txt')
 
     # diagnose_summary_results(r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version\results.csv', r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version\results_sum.csv')
     # print(find_prev_classifier_version(r'C:\Users\eyalhad\Desktop\runningProjects\Math_version\math_6_fix

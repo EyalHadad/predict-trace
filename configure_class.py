@@ -2,12 +2,12 @@ import os
 
 
 class Configure(object):
-    def __init__(self, proj_name, commit_db, git_repo_path, start_bug_num, end_bug_num):
-        self.commit_database = commit_db
-        self.git_repo = git_repo_path
-        self.start_bug = start_bug_num
-        self.end_bug = end_bug_num
-        self.proj_name = proj_name
+    def __init__(self, proj_name, start_bug_num, end_bug_num):
+        self.project_name = proj_name
+        self.start_bug = int(start_bug_num)
+        self.end_bug = int(end_bug_num)
+        self.commit_database =None
+        self.git_repo = None
         self.bug_ind = None
         self.fix_ind = None
         self.root_dir = None
@@ -17,21 +17,35 @@ class Configure(object):
 
 
     def set_indexes(self):
-        if self.proj_name == "math":
+        if self.project_name == "math":
+            self.commit_database = "C:\Users\eyalhad\Desktop\projects_db\defects4j\projects\Math\commit-db.txt"
+            self.git_repo = "https://github.com/haidaros/defects4j-math.git"
             self.root_dir = r'D:\runningProjects\Math_version'
             self.clone_name = "\\defects4j-math"
             self.bug_ind = 1
             self.fix_ind = 2
             self.need_patch = False
-        if self.proj_name == "lang":
+        if self.project_name == "lang":
+            self.commit_database = "C:\Users\eyalhad\Desktop\projects_db\BugMinerResults\commons-lang.csv"
+            self.git_repo = "https://github.com/apache/commons-lang.git"
             self.root_dir = r'D:\runningProjects\Lang_version'
             self.clone_name = "\\BugMinerResults-lang"
             self.need_patch = False
             self.bug_ind = 5
             self.fix_ind = 4
-        if self.proj_name == "maven":
+        if self.project_name == "maven":
+            self.commit_database = r"C:\Users\eyalhad\Desktop\projects_db\bugs_dot_jar\maven\maven_commits.csv"
+            self.git_repo = "https://github.com/bugs-dot-jar/maven.git"
             self.root_dir = r'D:\runningProjects\Maven_version'
             self.clone_name = "\\BugMinerResults-maven"
+            self.need_patch = True
+            self.bug_ind = 0
+            self.fix_ind = 0
+        if self.project_name == "wicket":
+            self.commit_database = r"C:\Users\eyalhad\Desktop\projects_db\bugs_dot_jar\wicket\wicket_commit.csv"
+            self.git_repo = "https://github.com/bugs-dot-jar/wicket.git"
+            self.root_dir = r'D:\runningProjects\Wicket_version'
+            self.clone_name = "\\BugMinerResults-wicket"
             self.need_patch = True
             self.bug_ind = 0
             self.fix_ind = 0
@@ -50,15 +64,16 @@ class FilesAddress(object):
         self.func_record_file = root_dir + r'\func_record_file.txt'
         self.time_file = root_dir + r'\times.txt'
         self.errors_file = root_dir + r'\errors.txt'
+        self.buggy_functions = root_dir + r'\buggy_function.txt'
         self.debugger_tests_dir = root_dir + r'\DebuggerTests'
 
 
 class RunConfigure(object):
     def __init__(self, root_dir, project_name, clone_dir, bug_id, fix_version, bug_version):
-        self.bug_id = bug_id
+        self.bug_id = str(bug_id)
         self.fix_version = fix_version
         self.bug_version = bug_version
-        self.project_dir = root_dir + "\\" + project_name + "_" + bug_id + "_fix"
+        self.project_dir = root_dir + "\\" + project_name + "_" + self.bug_id + "_fix"
         self.additional_files_path = self.project_dir + r'\additionalFiles'
         self.debugger_tests_path = self.additional_files_path + r'\DebuggerTests'
         self.git_repo_local_path = self.project_dir + clone_dir

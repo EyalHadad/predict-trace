@@ -12,9 +12,13 @@ file_address = None
 def set_log_files():
     if os.path.isfile(file_address.log_file):
         os.remove(file_address.log_file)
+    if os.path.isfile(file_address.buggy_functions):
+        os.remove(file_address.buggy_functions)
     if os.path.isfile(file_address.errors_file):
         os.remove(file_address.errors_file)
     with open(file_address.log_file, 'w+') as f:
+        pass
+    with open(file_address.buggy_functions, 'w+') as f:
         pass
     with open(file_address.errors_file, 'w+') as f:
         pass
@@ -22,7 +26,12 @@ def set_log_files():
 
 def write_to_log(bug_id, func_name_list):
     with open(file_address.log_file, 'a+') as f:
-        f.write("Bug Num:" + bug_id + ",    " + str(func_name_list) + "\r\n")
+        f.write("Bug Num:" + str(bug_id) + ",    " + str(func_name_list) + "\r\n")
+
+
+def record_buggy_functions(bug_id, func_name_list):
+    with open(file_address.buggy_functions, 'a+') as f:
+        f.write("Bug Num:" + str(bug_id) + ",    " + str(func_name_list) + "\r\n")
 
 
 def write_to_log_error(error, bug_num):
@@ -58,8 +67,9 @@ def create_java_matrix(run_conf, func_name_list):
 
 def run_classifier(run_conf):
     additional_path = run_conf.additional_files_path
-    prediction_input_to_nn = os.path.join(additional_path, r"predictionInputToNN.csv")
-    training_input_to_nn = os.path.join(additional_path, r"trainingInputToNNSeq_99.csv")
+    prediction_input_to_nn = os.path.join(additional_path, r"predictionInputToNNSeq.csv")
+    training_input_to_nn = os.path.join(additional_path, r"predictionInputToNNSeq.csv")
+    # training_input_to_nn = os.path.join(additional_path, r"trainingInputToNNSeq.csv")
     classifier_file = os.path.join(additional_path, r"classifier.pkl")
     output_file = os.path.join(additional_path, "score_" + run_conf.bug_id + ".csv")
     classifier_perform_file = os.path.join(additional_path, "classifier_learning_results.csv")
@@ -87,12 +97,12 @@ def create_input_nn(run_conf, func_name_list):
 
 def call_graph_creation(run_conf):
     call_graph_path = run_conf.project_dir + r'\additionalFiles\callGraph.txt'
-    java_jar_ant = get_project_jar_path(run_conf.project_dir + conf.clone_name + r'\target')
+    java_jar_ant = get_project_jar_path(run_conf)
     tests_jar = run_conf.project_dir + conf.clone_name + r'\tests.jar'
-
     with open(call_graph_path, "w+") as f:
-        p_create_cg = subprocess.Popen(['java', '-jar', file_address.call_graph_jar, java_jar_ant, tests_jar], stdout=f)
-    p_create_cg.communicate()
+        for elem in java_jar_ant:
+            p_create_cg = subprocess.Popen(['java', '-jar', file_address.call_graph_jar, elem, tests_jar], stdout=f)
+            p_create_cg.communicate()
 
 
 def tracer_and_parse(run_conf):
@@ -128,34 +138,35 @@ def mvn_dir_commands(run_conf):
 def run_prediction(bug_id, fix_version, bug_version):
     if not os.path.exists(conf.root_dir):
         os.makedirs(conf.root_dir)
-
+    print ("----------Bug num " + str(bug_id) + "---------------")
     run_conf = RunConfigure(conf.root_dir, conf.project_name, conf.clone_name, bug_id, fix_version, bug_version)
-
+    os.makedirs(run_conf.additional_files_path)
     # todo MVN and folders
-    mvn_dir_commands(run_conf)
+    # mvn_dir_commands(run_conf)
     # todo call graph
     call_graph_creation(run_conf)
 
     # todo get function names
-    if conf.need_patch:
-        func_name_list = get_func_names(run_conf)
-    else:
-        func_name_list = extract_buggy_functions(run_conf)
-    if len(func_name_list) == 0:
-        raise NameError('No buggy functions')
-    # todo tracer_parsing
-    tracer_and_parse(run_conf)
-    # todo input_to_NN
-    create_input_nn(run_conf, func_name_list)
-
-    # todo run the classifier code
-    run_classifier(run_conf)
-
-    # todo run createMatrixTxt code
-    create_java_matrix(run_conf, func_name_list)
-
-    # todo run_diagnosis
-    run_diagnosis(run_conf)
+    # if not conf.need_patch:
+    #     func_name_list = get_func_names(run_conf, file_address)
+    # else:
+    #     func_name_list = extract_buggy_functions(run_conf, conf)
+    # if len(func_name_list) == 0:
+    #     raise NameError('No buggy functions')
+    # record_buggy_functions(bug_id, func_name_list)
+    # # todo tracer_parsing
+    # tracer_and_parse(run_conf)
+    # # todo input_to_NN
+    # create_input_nn(run_conf, func_name_list)
+    #
+    # # todo run the classifier code
+    # run_classifier(run_conf)
+    #
+    # # todo run createMatrixTxt code
+    # create_java_matrix(run_conf, func_name_list)
+    #
+    # # todo run_diagnosis
+    # run_diagnosis(run_conf)
 
 
 def read_commit_file():
@@ -168,16 +179,16 @@ def read_commit_file():
         split_content = line.split(',')
         bug_version = split_content[conf.bug_ind]
         fix_version = split_content[conf.fix_ind]
-        if int(line_number) <= conf.end_bug:
+        if conf.start_bug <= line_number <= conf.end_bug:
             try:
                 run_prediction(line_number, fix_version, bug_version)
             except Exception as e:
                 traceback.print_exc()
-                write_to_log_error(e, line_number)
+                write_to_log_error(e, str(line_number))
 
 
 if __name__ == '__main__':
-    if len(sys.argv) == 6:
-        conf = Configure(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5])
+    if len(sys.argv) == 4:
+        conf = Configure(sys.argv[1], sys.argv[2], sys.argv[3])
         file_address = FilesAddress(conf.root_dir)
         read_commit_file()

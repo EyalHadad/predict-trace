@@ -1,6 +1,9 @@
-import filediff
+from javadiff.javadiff import diff,FileDiff
+
+from configure_class import Configure, FilesAddress, RunConfigure
 import git
 import os
+import subprocess
 
 
 def get_class_from_line(line):
@@ -22,14 +25,14 @@ def index_to_names(index_list, java_class, project_path, func_list):
             second_num = int(line.split(" ")[1].split("@")[2])
             for index in index_list:
                 if first_num <= index <= second_num:
-                    full_func_name = str_class[str_class.find("org"):str_class.find(".java")].\
-                                         replace("/",".") + ":" + func_name
+                    full_func_name = str_class[str_class.find("org"):str_class.find(".java")]. \
+                                         replace("/", ".") + ":" + func_name
                     if full_func_name not in func_list:
                         func_list.append(full_func_name)
     return func_list
 
 
-def method_name_xml(run_conf):
+def method_name_xml(run_conf, file_address):
     method_lines = os.path.join(run_conf.git_repo_local_path, r"method_lines.txt")
     with open(method_lines, "w+") as f:
         p_create_call_graph = subprocess.Popen(
@@ -50,12 +53,12 @@ def fix_constructor_names(func_names):
     return new_func_names
 
 
-def get_func_names(run_conf):
+def get_func_names(run_conf, file_address):
     repo = git.Repo(run_conf.git_repo_local_path)
     commit_a = repo.commit(run_conf.bug_version)
     commit_b = repo.commit(run_conf.fix_version)
-    diffs = map(filediff.FileDiff, commit_a.tree.diff(commit_b.tree))
-    method_name_xml(run_conf)
+    diffs = map(FileDiff, commit_a.tree.diff(commit_b.tree))
+    method_name_xml(run_conf, file_address)
     func_names = []
     for x in diffs:
         if x.file_name.endswith('.java') and "Test" not in x.file_name:
@@ -65,7 +68,7 @@ def get_func_names(run_conf):
     return fix_constructor_names(func_names)
 
 
-def extract_buggy_functions(run_conf):
+def extract_buggy_functions(run_conf,conf):
     repo_path = run_conf.project_dir + conf.clone_name
     repo = git.Repo(repo_path)
     repo.git.checkout('-f', '--', '.', )

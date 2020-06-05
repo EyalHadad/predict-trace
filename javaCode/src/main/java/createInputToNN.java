@@ -45,8 +45,8 @@ public class createInputToNN {
 
         readTraceFile(TRACE_FILE_PATH, traceDic,testsList,funcRank);
         List<String> targetFunctionList = new ArrayList<>(funcRank.keySet());
-        List<String> functionToPredict = new ArrayList<>(targetFunctionList.subList(1,((targetFunctionList.size())/100)));
-        List<String> functionToPT = new ArrayList<>(targetFunctionList.subList(((targetFunctionList.size())/100),targetFunctionList.size()));
+        List<String> functionToPredict = new ArrayList<>(targetFunctionList.subList(1,((targetFunctionList.size())/2)));
+        List<String> functionToPT = new ArrayList<>(targetFunctionList.subList(((targetFunctionList.size())/2),targetFunctionList.size()));
         Map <String,String> dicToSave = new HashMap<String,String>();
 
         //////create call graph//////////////
@@ -82,7 +82,7 @@ public class createInputToNN {
             }
             String testFunction = testsList.get(i);
             belongToTrain = false;
-            if(i % 20 == 0) {
+            if(i % 10 == 0) {
                 belongToTrain = true;
             }
             List<String> testPartTrace = new ArrayList<>(traceDic.get(testFunction));
