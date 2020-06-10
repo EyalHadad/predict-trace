@@ -27,19 +27,19 @@ public class createMatrixTxt {
 
         traceDic.clear();
         getTestsAndBugNum(inputFile[0],0);
-        StringBuilder failTestClass = writeTextFile(traceDic,additional_files_path + "\\inputMatrix_amir.txt",funcNumberDic);
+        StringBuilder failTestClass = writeTextFile(traceDic,additional_files_path + "\\inputMatrix_oracle.txt",funcNumberDic);
         if(failTestClass.length()== 0)
         {
             sendFeedback(additional_files_path+ "\\errorFile.txt", 1);
         }
-        enterFailTestToFiles(failTestClass, additional_files_path + "\\inputMatrix_amir.txt");
+        enterFailTestToFiles(failTestClass, additional_files_path + "\\inputMatrix_oracle.txt");
         category = 3;
-        failTestClass = writeTextFile(traceDic,additional_files_path + "\\inputMatrix_eyal_1.txt",funcNumberDic);
+        failTestClass = writeTextFile(traceDic,additional_files_path + "\\inputMatrix_prediction.txt",funcNumberDic);
         if(failTestClass.length()== 0)
         {
             sendFeedback(additional_files_path+ "\\errorFile.txt", 1);
         }
-        enterFailTestToFiles(failTestClass, additional_files_path + "\\inputMatrix_eyal_1.txt");
+        enterFailTestToFiles(failTestClass, additional_files_path + "\\inputMatrix_prediction.txt");
 
 //        for( int i=2;i<outputFilesNames.length;i++)
 //        {
@@ -71,8 +71,8 @@ public class createMatrixTxt {
         String line;
         String[] lineData = new String[4];
         try (BufferedReader br = new BufferedReader(new FileReader(path))) {
-            br.readLine(); //remove first line
             while ((line = br.readLine()) != null) {
+                br.readLine(); //remove first line
                 lineData = line.split(",");
                 String testFuncNamesConcate = lineData[0] + lineData[1];
                 //create funcNumberDic to get number for every function
@@ -415,8 +415,9 @@ public class createMatrixTxt {
         String input_bug_functions = args[1];
         bugFuncNames = input_bug_functions.split(" ");
         additional_files_path = args[2];
-        outputFilesNames[0] = additional_files_path + "\\inputMatrix_amir.txt";
-        outputFilesNames[1] = additional_files_path + "\\inputMatrix_eyal_1.txt";
+
+        outputFilesNames[0] = additional_files_path + "\\inputMatrix_oracle.txt";
+        outputFilesNames[1] = additional_files_path + "\\inputMatrix_prediction.txt";
 //        outputFilesNames[2] = additional_files_path + "\\inputMatrix_eyal_2.txt";
 //        outputFilesNames[3] = additional_files_path + "\\inputMatrix_eyal_3.txt";
         StringBuilder inputNew = new StringBuilder();

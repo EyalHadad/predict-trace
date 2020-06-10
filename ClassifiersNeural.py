@@ -33,19 +33,47 @@ def get_and_split_data_initial_data(input_file, dest_feature):
     return x, y
 
 
+def train_test_split_with_promise(x, y, test_size):
+    total = pd.concat([x, y], axis=1)
+    yes_path = total[total['PathExistence'] == 1]
+    no_path = total[total['PathExistence'] != 1]
+
+    x_yes_path = yes_path.loc[:, 'PathLength':'FuncSim']
+    y_yes_path = yes_path.loc[:, 'y']
+
+    x_no_path = no_path.loc[:, 'PathLength':'FuncSim']
+    y_no_path = no_path.loc[:, 'y']
+
+    yes_x_train, yes_x_test, yes_y_train, yes_y_test = train_test_split(x_yes_path, y_yes_path, test_size=test_size)
+    no_x_train, no_x_test, no_y_train, no_y_test = train_test_split(x_no_path, y_no_path, test_size=test_size)
+    y_test = pd.concat([yes_y_test, no_y_test])
+    x_test = pd.concat([yes_x_test, no_x_test])
+    y_train = pd.concat([yes_y_train, no_y_train])
+    x_train = pd.concat([yes_x_train, no_x_train])
+
+    return x_train, x_test, y_train, y_test
+
+
 def split_data_and_get_best_classifier(x, y, classifier_perform_file):
-
     clf_list = []
-    tmp_clf = 0
-    for split_size in range(1, 9):
-        test_size_split = split_size/float(1000)
-        x_train, tmp_x_test, tmp_y_train, tmp_y_test = train_test_split(x, y, test_size=test_size_split)
-        tmp_clf_perform_file = classifier_perform_file.split(".")[0] + "_0.00" + str(split_size) + ".csv"
-        if os.path.isfile(tmp_clf_perform_file):
-            os.remove(tmp_clf_perform_file)
-        tmp_clf = train_classifier(x_train, tmp_y_train, tmp_x_test, tmp_y_test, tmp_clf_perform_file)
+    # tmp_clf = 0
+    # for split_size in range(1, 9):
+    #     test_size_split = split_size / float(1000)
+    #
+    #     x_train, tmp_x_test, tmp_y_train, tmp_y_test = train_test_split_with_promise(x, y, test_size=1/float(1))
+    #     # x_train, tmp_x_test, tmp_y_train, tmp_y_test = train_test_split(x, y, test_size=test_size_split)
+    #     tmp_clf_perform_file = classifier_perform_file.split(".")[0] + "_0.00" + str(split_size) + ".csv"
+    #     if os.path.isfile(tmp_clf_perform_file):
+    #         os.remove(tmp_clf_perform_file)
+    #     tmp_clf = train_classifier(x_train, tmp_y_train, tmp_x_test, tmp_y_test, tmp_clf_perform_file)
 
-    clf_list.append(tmp_clf)
+    test_size = 1 / float(10)
+    x_train, tmp_x_test, tmp_y_train, tmp_y_test = train_test_split_with_promise(x, y, test_size=test_size)
+    tmp_clf_perform_file = classifier_perform_file.split(".")[0] + "_0.00" + str(5) + ".csv"
+    if os.path.isfile(tmp_clf_perform_file):
+        os.remove(tmp_clf_perform_file)
+    tmp_clf = train_classifier(x_train, tmp_y_train, tmp_x_test, tmp_y_test, tmp_clf_perform_file)
+    clf_list.append((tmp_clf, test_size))
     #
     # for ind in range(len(x.columns)):
     #     new_x = x
@@ -106,7 +134,7 @@ def save_trained_classifiers_in_files(classifier_path_to_save, clf_list_to_save)
             cPickle.dump(clf, fid)
 
 
-def partial_predicted_data(input_file, classifier_list_to_use, prediction_result_file,dest_feature):
+def partial_predicted_data(input_file, classifier_list_to_use, prediction_result_file, dest_feature):
     f = open(input_file)
     header = f.readline()
     data_to_predict = [header]
@@ -182,10 +210,12 @@ def classify_code(bugID, training_input_file, prediction_input_file, classifier_
     # open the classifier of previous
     classifier_list_to_use = find_prev_classifier_version(ADDITIONAL_FILES_PATH, bugID)
     additional_path = classifier_path_to_save[0:classifier_path_to_save.rindex("\\")]
-    old_score_to_remove = [os.path.join(additional_path, x) for x in os.listdir(additional_path) if "score" in x and ".csv" in x]
+    old_score_to_remove = [os.path.join(additional_path, x) for x in os.listdir(additional_path) if
+                           "score" in x and ".csv" in x]
     for clf_to_delete in old_score_to_remove:
         os.remove(clf_to_delete)
-    partial_predicted_data(prediction_input_file, classifier_list_to_use, prediction_result_file, dest_feature='FuncSim')
+    partial_predicted_data(prediction_input_file, classifier_list_to_use, prediction_result_file,
+                           dest_feature='FuncSim')
 
 
 if __name__ == '__main__':

@@ -1,5 +1,5 @@
 from configure_class import Configure, FilesAddress, RunConfigure
-from mvnpy import Repo
+from mvnpy import Repo,use_repo
 import traceback, subprocess, sys, os
 from additional_functions import *
 from function_diff import *
@@ -99,9 +99,10 @@ def call_graph_creation(run_conf):
     call_graph_path = run_conf.project_dir + r'\additionalFiles\callGraph.txt'
     java_jar_ant = get_project_jar_path(run_conf)
     tests_jar = run_conf.project_dir + conf.clone_name + r'\tests.jar'
+    # java_jar_ant.append(tests_jar)
     with open(call_graph_path, "w+") as f:
         for elem in java_jar_ant:
-            p_create_cg = subprocess.Popen(['java', '-jar', file_address.call_graph_jar, elem, tests_jar], stdout=f)
+            p_create_cg = subprocess.Popen(['java', '-jar', file_address.call_graph_jar, elem], stdout=f)
             p_create_cg.communicate()
 
 
@@ -115,36 +116,36 @@ def tracer_and_parse(run_conf):
 
 
 def mvn_dir_commands(run_conf):
-    if os.path.exists(run_conf.project_dir):
-        os.system('rmdir /S /Q "{}"'.format(run_conf.project_dir))
-    os.makedirs(run_conf.additional_files_path)
+    # if os.path.exists(run_conf.project_dir):
+    #     os.system('rmdir /S /Q "{}"'.format(run_conf.project_dir))
+    # os.makedirs(run_conf.additional_files_path)
 
     # todo clone and checkout
-    os.chdir(run_conf.project_dir)
-    os.system('git clone {0}'.format(conf.git_repo))
-    for folder_name in os.listdir(run_conf.project_dir):
-        if "additionalFiles" not in folder_name:
-            os.rename(folder_name, conf.clone_name[1:])
+    # os.chdir(run_conf.project_dir)
+    # os.system('git clone {0}'.format(conf.git_repo))
+    # for folder_name in os.listdir(run_conf.project_dir):
+    #     if "additionalFiles" not in folder_name:
+    #         os.rename(folder_name, conf.clone_name[1:])
     os.chdir(run_conf.project_dir + conf.clone_name)
-    os.system('git checkout {0}'.format(run_conf.fix_version))
+    # os.system('git checkout {0}'.format(run_conf.fix_version))
     # todo create project jar
-    subprocess.Popen(['cmd', '/C', 'mvn clean']).communicate()
-    subprocess.Popen(['cmd', '/C', 'mvn install -Dmaven.test.skip=true']).communicate()
-    subprocess.Popen(['cmd', '/C', 'mvn test']).communicate()
-    subprocess.Popen(
-        ['jar', 'cvf', 'tests.jar', '-c', run_conf.project_dir + conf.clone_name + "\\target\\test-classes\\org"])
+    subprocess.Popen(['cmd', '/C', 'mvn clean']).wait()
+    use_repo.add_jar_plugin(run_conf.pom_file)
+    subprocess.Popen(['cmd', '/C', 'mvn install -fn']).wait()
+    # subprocess.Popen(['cmd', '/C', 'mvn test']).communicate()
+    # subprocess.Popen(
+    #     ['jar', 'cvf', 'tests.jar', '-c', run_conf.project_dir + conf.clone_name + "\\target\\test-classes\\org"])
 
 
-def run_prediction(bug_id, fix_version, bug_version):
+def run_prediction(bug_id, fix_version, bug_version,run_conf):
     if not os.path.exists(conf.root_dir):
         os.makedirs(conf.root_dir)
     print ("----------Bug num " + str(bug_id) + "---------------")
-    run_conf = RunConfigure(conf.root_dir, conf.project_name, conf.clone_name, bug_id, fix_version, bug_version)
-    os.makedirs(run_conf.additional_files_path)
+    # os.makedirs(run_conf.additional_files_path)
     # todo MVN and folders
-    # mvn_dir_commands(run_conf)
+    mvn_dir_commands(run_conf)
     # todo call graph
-    call_graph_creation(run_conf)
+    # call_graph_creation(run_conf)
 
     # todo get function names
     # if not conf.need_patch:
@@ -181,7 +182,10 @@ def read_commit_file():
         fix_version = split_content[conf.fix_ind]
         if conf.start_bug <= line_number <= conf.end_bug:
             try:
-                run_prediction(line_number, fix_version, bug_version)
+                run_conf = RunConfigure(conf.root_dir, conf.project_name, conf.clone_name, line_number, fix_version,
+                                        bug_version)
+                if exists(run_conf.trace_file):
+                    run_prediction(line_number, fix_version, bug_version,run_conf)
             except Exception as e:
                 traceback.print_exc()
                 write_to_log_error(e, str(line_number))

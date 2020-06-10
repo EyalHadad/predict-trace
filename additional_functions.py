@@ -30,15 +30,15 @@ def writeTraceFile(traces_dicionary, TRACE_FILE):
 
 
 def get_project_jar_path(run_conf):
-    target_path = run_conf.git_repo_local_path + r'\target'
-    if exists(target_path):
-        only_files = [f for f in listdir(target_path) if isfile(join(target_path, f))]
-        if len(only_files) > 0:
-            for file in only_files:
-                if file.endswith('.jar'):
-                    res_path = os.path.join(target_path, file)
-                    if len(res_path) > 0:
-                        return res_path
+    # target_path = run_conf.git_repo_local_path + r'\target'
+    # if exists(target_path):
+    #     only_files = [f for f in listdir(target_path) if isfile(join(target_path, f))]
+    #     if len(only_files) > 0:
+    #         for file in only_files:
+    #             if file.endswith('.jar'):
+    #                 res_path = os.path.join(target_path, file)
+    #                 if len(res_path) > 0:
+    #                     return res_path
     res = []
     for folder in os.listdir(run_conf.git_repo_local_path):
         target_folder = os.path.join(run_conf.git_repo_local_path, folder, 'target')
@@ -379,14 +379,20 @@ if __name__ == '__main__':
     # return_dict = classifier_results_function_percentage(
     #     r'D:\runningProjects\Math_version\math_@_fix\additionalFiles\classifier_learning_results.csv')
     # print ("end")
-    # copy_files(r'D:\runningProjects\Maven_version\maven_@_fix\additionalFiles',
-    #             r'C:\Users\eyalhad\Desktop\copyCallGraph\Maven\maven_@_fix', 'callGraph.txt')
-    # copy_files(r'C:\Users\eyalhad\Desktop\copyTrace\Wicket\wicket_@_fix',
-    #            r'D:\runningProjects\Wicket_version\wicket_@_fix\additionalFiles', 'traceFile.txt')
+
+    # D:\runningProjects\Wicket_version\wicket_20_fix
+    # copy_files(r'D:\runningProjects\Wicket_version\wicket_@_fix\additionalFiles',
+    #             r'C:\Users\eyalhad\Desktop\copyCallGraph\Wicket\wicket_@_fix', 'callGraph.txt')
+    # C:\Users\eyalhad\Desktop\copyTrace\Wicket\wicket_0_fix
+    # copy_files(r'C:\Users\eyalhad\Desktop\copyTrace\Wicket\wicket_0_fix',
+    #            r'D:\runningProjects\Wicket_version\wicket_0_fix\additionalFiles', 'traceFile.txt')
+
+    copy_files(r'C:\Users\eyalhad\Desktop\copyTrace\Maven\maven_@_fix',
+               r'D:\runningProjects\Maven_version\maven_@_fix\additionalFiles', 'traceFile.txt')
 
 
-    copy_files(r'C:\Users\eyalhad\Desktop\copyCallGraph\Math\math_@_fix',
-               r'D:\runningProjects\Math_version\math_@_fix\additionalFiles', 'callGraph.txt')
+    # copy_files(r'C:\Users\eyalhad\Desktop\copyCallGraph\Math\math_@_fix',
+    #            r'D:\runningProjects\Math_version\math_@_fix\additionalFiles', 'callGraph.txt')
 
     # diagnose_summary_results(r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version\results.csv', r'C:\Users\eyalhad\Desktop\runningProjects\Lang_version\results_sum.csv')
     # print(find_prev_classifier_version(r'C:\Users\eyalhad\Desktop\runningProjects\Math_version\math_6_fix

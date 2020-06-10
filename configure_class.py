@@ -79,4 +79,5 @@ class RunConfigure(object):
         self.git_repo_local_path = self.project_dir + clone_dir
         self.error_file = os.path.join(self.additional_files_path, r"errorFile.txt")
         self.trace_file = os.path.join(self.additional_files_path, r"traceFile.txt")
+        self.pom_file = os.path.join(self.git_repo_local_path, r'pom.xml')
 

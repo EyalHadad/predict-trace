@@ -56,7 +56,7 @@ public class createInputToNN {
         Map<String, Integer> vertexDic  = new HashMap<String, Integer>();
         Map<String, Integer> functionVertexDic  = new HashMap<String, Integer>();
         Map<String, Integer> testVertexDic  = new HashMap<String, Integer>();
-        callGraph = createCallGraph(CALL_GRAPH_PATH,vertexDic,functionVertexDic,testVertexDic);
+        callGraph = createCallGraph(CALL_GRAPH_PATH,vertexDic,traceDic,testsList);
         int [][] adjMatrix = new int[vertexDic.size()][vertexDic.size()];
         DirectedGraph<String, DefaultEdge> directedGraph = createGraph(callGraph,adjMatrix, vertexDic);
 
@@ -514,11 +514,9 @@ public class createInputToNN {
         return path;
     }
 
-    private static Map<String,LinkedHashSet<String>> createCallGraph(String path, Map<String, Integer> vertexDic, Map<String, Integer> functionVertexDic, Map<String, Integer> testVertexDic) throws IOException {
+    private static Map<String,LinkedHashSet<String>> createCallGraph(String path, Map<String, Integer> vertexDic, Map<String, List<String>> traceDic, List<String> testsList) throws IOException {
         Map<String, LinkedHashSet<String>> callGraph = new HashMap<String, LinkedHashSet<String>>();
-        LinkedHashSet<String> value;
         String targetType;
-        int[] vertexArrayIndex = new int[3];
         int vertexIndex = 0;
         try (BufferedReader br = new BufferedReader(new FileReader(path))) {
             String line;
@@ -528,6 +526,13 @@ public class createInputToNN {
                 if(line.startsWith("M:")){
                     splited = line.split(" ");
                     splited[0] = cleanString(splited[0]);
+                    if(testsList.contains(splited[0].toLowerCase())){
+                        int listIndex = testsList.indexOf(splited[0].toLowerCase());
+                        testsList.set(listIndex,splited[0]);
+                        List<String> pastVal = traceDic.get(splited[0].toLowerCase());
+                        traceDic.remove(splited[0].toLowerCase());
+                        traceDic.put(splited[0], pastVal);
+                    }
                     //add ":" to splited[1] for cleaning the string
                     splited[1] = splited[1].substring(0, 3) + ":" + splited[1].substring(3, splited[1].length());
                     targetType = splited[1].substring(0, 3);
